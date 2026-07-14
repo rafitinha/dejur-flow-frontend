@@ -1,0 +1,387 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Validador de Ações Judiciais API",
+    "version": "0.1.0",
+    "description": "Contrato proposto pelo front-end para o backend futuro."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/api/v1/requests": {
+      "get": {
+        "summary": "Lista solicitações do usuário autenticado",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RequestListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/requests/drafts": {
+      "post": {
+        "summary": "Cria rascunho",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCreated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}": {
+      "get": {
+        "summary": "Detalha solicitação",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/requests/submit": {
+      "post": {
+        "summary": "Submete solicitação com arquivos",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "metadata",
+                  "files"
+                ],
+                "properties": {
+                  "metadata": {
+                    "type": "string",
+                    "description": "JSON ChecklistPayload serializado"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Aceito para processamento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/requests/approved": {
+      "get": {
+        "summary": "Lista aprovações para DEJUR/ADMIN",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RequestListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "summary": "Lista notificações",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RequestListItem": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "example": "REQ-2026-07-03-000001"
+          },
+          "checklistType": {
+            "type": "string"
+          },
+          "debtorName": {
+            "type": "string"
+          },
+          "debtorCnpj": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByEmail": {
+            "type": "string"
+          },
+          "llmScore": {
+            "type": "number"
+          }
+        }
+      },
+      "RequestCreated": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "DRAFT"
+          }
+        }
+      },
+      "SubmitResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "PROCESSING"
+          },
+          "queuePosition": {
+            "type": "integer"
+          }
+        }
+      },
+      "ChecklistPayload": {
+        "type": "object",
+        "required": [
+          "checklistType",
+          "createdBy",
+          "company",
+          "debtor",
+          "financial",
+          "factsSummary",
+          "documents"
+        ],
+        "properties": {
+          "checklistType": {
+            "type": "string",
+            "enum": [
+              "RECUPERACAO_VASILHAMES",
+              "COBRANCA_TITULOS",
+              "COBRANCA_MULTA_CONTRATUAL"
+            ]
+          },
+          "createdBy": {
+            "type": "object"
+          },
+          "company": {
+            "type": "object"
+          },
+          "debtor": {
+            "type": "object"
+          },
+          "financial": {
+            "type": "object"
+          },
+          "agreementAttempts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "factsSummary": {
+            "type": "string"
+          },
+          "opinion": {
+            "type": "object"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "clientValidation": {
+            "type": "object"
+          }
+        }
+      },
+      "RequestDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ChecklistPayload"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "llmResult": {
+                "$ref": "#/components/schemas/LlmResult"
+              }
+            }
+          }
+        ]
+      },
+      "LlmResult": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "structuredReport": {
+            "type": "object"
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inconsistencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "canResubmit": {
+            "type": "boolean"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

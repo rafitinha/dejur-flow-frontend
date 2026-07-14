@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: validador-acoes-judiciais-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://backend-mock:8080
+      NEXT_PUBLIC_MOCK_API: "false"
+    depends_on:
+      - backend-mock
+
+  backend-mock:
+    image: node:22-alpine
+    container_name: validador-acoes-judiciais-backend-mock
+    working_dir: /mock
+    volumes:
+      - ./scripts:/mock/scripts
+      - ./docs/openapi:/mock/docs/openapi
+    command: ["node", "scripts/mock-api-server.mjs"]
+    ports:
+      - "8080:8080"

@@ -1,0 +1,61 @@
+stages:
+  - install
+  - lint
+  - test
+  - build
+  - docker
+
+variables:
+  NODE_VERSION: "22"
+  DOCKER_TLS_CERTDIR: ""
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+install:
+  stage: install
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - npm install
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+
+lint_typecheck:
+  stage: lint
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - npm run lint
+    - npm run type-check
+
+unit_tests:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - npm run test
+
+build_next:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - .next/
+    expire_in: 1 day
+
+docker_build:
+  stage: docker
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+    - develop

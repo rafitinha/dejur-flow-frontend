@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "Validador Ações Judiciais - Mock Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": "mock-token"
+    }
+  ],
+  "item": [
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Listar minhas solicitações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests"
+          }
+        },
+        {
+          "name": "Criar rascunho",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checklistType\": \"COBRANCA_MULTA_CONTRATUAL\",\n  \"factsSummary\": \"Resumo mínimo de teste com mais detalhes...\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/requests/drafts"
+          }
+        },
+        {
+          "name": "Submeter solicitação",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "metadata",
+                  "value": "{\"checklistType\":\"COBRANCA_MULTA_CONTRATUAL\"}",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/requests/submit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin DEJUR",
+      "item": [
+        {
+          "name": "Listar aprovadas",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/requests/approved"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Listar notificações",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/notifications"
+          }
+        }
+      ]
+    }
+  ]
+}

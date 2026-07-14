@@ -1,0 +1,1 @@
+export default function NotificationsPage(){return <section><h1 className="text-2xl font-bold">Notificações</h1><div className="mt-6 grid gap-3"><div className="rounded-xl border bg-white p-4"><p className="font-medium">Solicitação aprovada</p><p className="text-sm text-slate-600">REQ-2026-07-03-000001 foi aprovada pela LLM e encaminhada ao DEJUR.</p></div></div></section>}

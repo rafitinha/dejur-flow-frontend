@@ -1,0 +1,72 @@
+{
+  "requestId": null,
+  "checklistType": "COBRANCA_MULTA_CONTRATUAL",
+  "createdBy": {
+    "userId": "azure-object-id",
+    "name": "Nome do Usuário",
+    "email": "usuario@empresa.com",
+    "roles": [
+      "USER"
+    ],
+    "groups": [
+      "azure-group-id"
+    ]
+  },
+  "company": {
+    "legalName": "Empresa GEQ LTDA",
+    "cnpj": "00.000.000/0001-00",
+    "city": "Fortaleza",
+    "uf": "CE"
+  },
+  "debtor": {
+    "legalName": "Empresa Devedora LTDA",
+    "tradeName": "Nome Fantasia",
+    "cnpj": "11.111.111/0001-11",
+    "address": {
+      "street": "Rua Exemplo",
+      "number": "100",
+      "district": "Centro",
+      "zipCode": "60000-000",
+      "city": "Fortaleza",
+      "uf": "CE"
+    },
+    "addressConfirmedBy": {
+      "name": "Fulano",
+      "role": "Promotor",
+      "confirmedAt": "2026-07-03"
+    },
+    "usesDifferentLegalIdentity": false
+  },
+  "financial": {
+    "historicalAmount": 20000,
+    "updatedAmount": 45295.16,
+    "correctionIndex": "INPC",
+    "interestRate": "1% mensal",
+    "penaltyRate": "2%",
+    "initialTerm": "2025-01-01",
+    "finalTerm": "2026-07-03"
+  },
+  "agreementAttempts": [
+    {
+      "date": "2026-06-01",
+      "method": "E-mail",
+      "responsible": "Usuário",
+      "result": "Devedor recusou pagamento"
+    }
+  ],
+  "factsSummary": "Resumo objetivo com origem do contrato, descumprimento, notificação, valor atualizado e motivo da recusa.",
+  "documents": [
+    {
+      "documentType": "CONTRATO_ASSINADO",
+      "fileName": "contrato.pdf",
+      "required": true,
+      "sizeBytes": 1000000
+    }
+  ],
+  "clientValidation": {
+    "isValid": true,
+    "missingFields": [],
+    "missingDocuments": [],
+    "totalFilesSizeBytes": 1000000
+  }
+}

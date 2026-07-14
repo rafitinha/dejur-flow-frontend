@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev"
+    },
+    {
+      "name": "Vitest: watch",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:watch"
+    },
+    {
+      "name": "Playwright: e2e",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:e2e"
+    },
+    {
+      "name": "Mock API",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run mock:api"
+    }
+  ]
+}

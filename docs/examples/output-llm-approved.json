@@ -1,0 +1,26 @@
+{
+  "requestId": "REQ-2026-07-03-000001",
+  "status": "APPROVED",
+  "score": 0.94,
+  "summary": "A solicitação possui elementos necessários para análise jurídica.",
+  "structuredReport": {
+    "checklistType": "COBRANCA_MULTA_CONTRATUAL",
+    "debtor": "Empresa Devedora LTDA",
+    "amount": 45295.16,
+    "mainFacts": [
+      "Contrato firmado",
+      "Multa por rescisão",
+      "Notificação enviada",
+      "Devedor discorda do valor"
+    ],
+    "legalReadiness": "APTA_PARA_DEJUR"
+  },
+  "missingFields": [],
+  "missingDocuments": [],
+  "inconsistencies": [],
+  "recommendations": [
+    "Validar planilha de cálculo."
+  ],
+  "canResubmit": false,
+  "reviewedAt": "2026-07-03T13:47:00Z"
+}
