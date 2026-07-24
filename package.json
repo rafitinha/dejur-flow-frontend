@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@auth/core": "latest",
+    "@brazilian-utils/brazilian-utils": "^2.3.0",
     "@hookform/resolvers": "latest",
     "@radix-ui/react-checkbox": "latest",
     "@radix-ui/react-dialog": "latest",

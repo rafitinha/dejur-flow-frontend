@@ -1,6 +1,19 @@
 import type { Metadata } from 'next';
+import { Montserrat, Source_Sans_3 } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/layout/Providers';
+
+const headingFont = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-heading',
+  display: 'swap',
+});
+
+const bodyFont = Source_Sans_3({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Validador de Ações Judiciais',
@@ -14,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         <Providers>{children}</Providers>
       </body>
     </html>

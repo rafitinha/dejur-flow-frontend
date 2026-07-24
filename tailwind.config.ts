@@ -6,13 +6,13 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: '#eff6ff',
-          500: '#2563eb',
-          700: '#1d4ed8'
-        }
-      }
-    }
+          50: '#ecfdf3',
+          500: '#16a34a',
+          700: '#15803d',
+        },
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 };
 export default config;
