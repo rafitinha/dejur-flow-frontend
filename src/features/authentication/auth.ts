@@ -1,26 +1,40 @@
-import NextAuth from 'next-auth';
-import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
+import { NextAuthOptions } from 'next-auth';
+import AzureADProvider from 'next-auth/providers/azure-ad';
 
-export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
-    MicrosoftEntraID({
-      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
-      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-      authorization: { params: { scope: 'openid profile email User.Read' } },
+    AzureADProvider({
+      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID!,
+      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET!,
+      tenantId: process.env.AUTH_MICROSOFT_ENTRA_TENANT_ID!,
+      authorization: {
+        params: {
+          scope: process.env.AUTH_MICROSOFT_ENTRA_SCOPE,
+        },
+      },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, account, profile }) {
-      if (account) token.accessToken = account.access_token;
-      // TODO: mapear grupos/roles vindos do Entra ID ou do backend.
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+
+      // TODO: Mapear grupos/roles vindos do Entra ID ou do backend.
       token.roles = token.roles ?? ['USER'];
+
       return token;
     },
+
     async session({ session, token }) {
-      session.user.roles = (token.roles as string[]) ?? ['USER'];
-      session.accessToken = token.accessToken as string | undefined;
+      session.user = {
+        ...session.user,
+        roles: token.roles ?? ['USER'],
+      };
+      session.accessToken = token.accessToken;
+
       return session;
     },
   },
-});
+};

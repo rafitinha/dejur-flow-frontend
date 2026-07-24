@@ -21,3 +21,13 @@ COPY --from=builder /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
+
+# Optional stage for CI/HMG/PRD E2E execution with Playwright-managed browsers.
+FROM mcr.microsoft.com/playwright:v1.56.0-noble AS e2e
+WORKDIR /app
+ENV APP_ENV=HMG
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+RUN npx playwright install --with-deps chromium
+CMD ["npm", "run", "test:e2e"]

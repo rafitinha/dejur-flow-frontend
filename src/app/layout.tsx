@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   description: 'Sistema de checklist e validação de ações judiciais com LLM.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="pt-BR">
       <body>

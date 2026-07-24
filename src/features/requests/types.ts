@@ -1,5 +1,14 @@
-export type ChecklistType = 'RECUPERACAO_VASILHAMES' | 'COBRANCA_TITULOS' | 'COBRANCA_MULTA_CONTRATUAL';
-export type RequestStatus = 'DRAFT' | 'SUBMITTED' | 'PROCESSING' | 'APPROVED' | 'REJECTED' | 'ERROR' | 'NEEDS_CORRECTION' | 'CANCELLED';
+export type ChecklistType =
+  'RECUPERACAO_VASILHAMES' | 'COBRANCA_TITULOS' | 'COBRANCA_MULTA_CONTRATUAL';
+export type RequestStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'PROCESSING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ERROR'
+  | 'NEEDS_CORRECTION'
+  | 'CANCELLED';
 export type Role = 'USER' | 'DEJUR' | 'ADMIN';
 
 export interface JudicialRequestListItem {
