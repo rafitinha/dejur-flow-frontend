@@ -28,6 +28,7 @@
     "@tanstack/react-query": "latest",
     "class-variance-authority": "latest",
     "clsx": "latest",
+    "framer-motion": "^12.42.2",
     "lucide-react": "latest",
     "msw": "latest",
     "next": "latest",

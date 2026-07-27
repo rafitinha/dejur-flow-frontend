@@ -1,5 +1,24 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
+import {
+  ArrowRight,
+  Brain,
+  FileText,
+  Sparkles,
+  TrendingUp,
+} from 'lucide-react';
+import { MiniBarChart } from '@/components/charts/MiniBarChart';
+import { DashboardMetricGrid } from '@/components/dashboard/cards';
+import { buttonVariants } from '@/components/ui/Button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/Card';
 import { StatusTag } from '@/components/ui/StatusTag';
+
 const items = [
   {
     id: 'REQ-2026-07-03-000001',
@@ -16,47 +35,135 @@ const items = [
 ];
 export default function DashboardPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card title="Rascunhos" value="3" />
-        <Card title="Processando" value="1" />
-        <Card title="Aprovadas" value="8" />
-        <Card title="Pendências" value="2" />
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-label">Painel Operacional</p>
+          <h1 className="text-heading">Dashboard Judicial</h1>
+          <p className="text-body mt-1">
+            Visão em tempo real de solicitações, performance de análise e fluxo
+            de aprovação.
+          </p>
+        </div>
+        <Link
+          href="/solicitacoes/nova"
+          className={buttonVariants({ variant: 'primary', size: 'md' })}
+        >
+          Nova solicitação <ArrowRight size={16} />
+        </Link>
       </div>
-      <Link
-        href="/solicitacoes/nova"
-        className="mt-6 inline-block rounded-lg bg-brand-700 px-4 py-2 text-white"
-      >
-        Nova solicitação
-      </Link>
-      <section className="mt-8 rounded-xl border bg-white p-4">
-        <h2 className="font-semibold">Recentes</h2>
-        <div className="mt-4 grid gap-3">
+
+      <DashboardMetricGrid />
+
+      <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Distribuição por tipo de checklist</CardTitle>
+              <CardDescription>
+                Proporção das entradas na última semana.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <MiniBarChart
+              labels={[
+                'Multa contratual',
+                'Cobrança de títulos',
+                'Recuperação vasilhames',
+              ]}
+              values={[34, 21, 13]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Indicadores de qualidade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InsightRow
+              icon={<Brain size={15} />}
+              label="Confiabilidade LLM"
+              value="94,2%"
+              tone="info"
+            />
+            <InsightRow
+              icon={<TrendingUp size={15} />}
+              label="SLA médio"
+              value="3h 12m"
+              tone="success"
+            />
+            <InsightRow
+              icon={<Sparkles size={15} />}
+              label="Aprovações automáticas"
+              value="76%"
+              tone="primary"
+            />
+            <InsightRow
+              icon={<FileText size={15} />}
+              label="Documentos pendentes"
+              value="9"
+              tone="warning"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Solicitações recentes</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
           {items.map((i) => (
             <div
               key={i.id}
-              className="flex items-center justify-between rounded-lg border p-3"
+              className="flex flex-col gap-3 rounded-md border border-border/80 bg-background/40 p-3 md:flex-row md:items-center md:justify-between"
             >
               <div>
                 <p className="font-medium">{i.id}</p>
-                <p className="text-sm text-slate-600">
+                <p className="text-body">
                   {i.tipo} • {i.devedora}
                 </p>
               </div>
               <StatusTag status={i.status} />
             </div>
           ))}
-        </div>
-      </section>
-    </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
-function Card({ title, value }: { title: string; value: string }) {
+
+function InsightRow({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone: 'primary' | 'info' | 'warning' | 'success';
+}) {
+  const toneClass = {
+    primary: 'bg-primary/15 text-primary',
+    info: 'bg-info/15 text-info',
+    warning: 'bg-warning/15 text-warning',
+    success: 'bg-success/15 text-success',
+  }[tone];
+
   return (
-    <div className="rounded-xl border bg-white p-4">
-      <p className="text-sm text-slate-500">{title}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className="flex items-center justify-between rounded-md border border-border/80 bg-background/40 p-3">
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex size-8 items-center justify-center rounded-md ${toneClass}`}
+        >
+          {icon}
+        </span>
+        <span className="text-sm text-foreground">{label}</span>
+      </div>
+      <span className="text-sm font-semibold text-foreground">{value}</span>
     </div>
   );
 }

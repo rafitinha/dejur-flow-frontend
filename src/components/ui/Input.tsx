@@ -1,15 +1,23 @@
 import { InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils/cn';
+
 export function Input({
+  status = 'default',
   className,
   ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+  status?: 'default' | 'error' | 'warning' | 'success';
+}) {
   return (
     <input
       className={cn(
-        'w-full rounded-lg border border-slate-300 px-3 py-2 focus-ring',
+        'field-base',
+        status === 'error' && 'field-error',
+        status === 'warning' && 'field-warning',
+        status === 'success' && 'field-success',
         className,
       )}
+      aria-invalid={status === 'error'}
       {...props}
     />
   );

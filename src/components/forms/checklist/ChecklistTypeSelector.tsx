@@ -1,4 +1,6 @@
 import { ChecklistType } from '@/features/requests/types';
+import { cn } from '@/lib/utils/cn';
+
 const options: { value: ChecklistType; title: string; description: string }[] =
   [
     {
@@ -32,10 +34,16 @@ export function ChecklistTypeSelector({
           type="button"
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-xl border bg-white p-4 text-left ${value === o.value ? 'border-brand-700 ring-2 ring-brand-500' : 'border-slate-200'}`}
+          className={cn(
+            'surface-card interactive-muted p-4 text-left transition-all focus-ring',
+            value === o.value
+              ? 'border-primary/80 bg-primary/10 ring-1 ring-primary/35'
+              : 'hover:border-primary/30',
+          )}
+          aria-pressed={value === o.value}
         >
-          <h3 className="font-semibold">{o.title}</h3>
-          <p className="mt-2 text-sm text-slate-600">{o.description}</p>
+          <h3 className="text-base font-semibold text-foreground">{o.title}</h3>
+          <p className="mt-2 text-body">{o.description}</p>
         </button>
       ))}
     </div>

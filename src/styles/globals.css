@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+  }
+
+  body {
+    font-family: var(--font-body), sans-serif;
+    @apply antialiased;
+    background:
+      radial-gradient(
+        1000px 520px at 10% -8%,
+        hsl(var(--primary) / 0.12),
+        transparent 60%
+      ),
+      radial-gradient(
+        840px 500px at 92% 0%,
+        hsl(var(--accent) / 0.09),
+        transparent 58%
+      ),
+      hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading), sans-serif;
+  }
+}
+
+@layer components {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .bg-app-gradient {
+    background:
+      radial-gradient(
+        900px 460px at 12% 4%,
+        hsl(var(--primary) / 0.11),
+        transparent 60%
+      ),
+      radial-gradient(
+        720px 420px at 90% 0%,
+        hsl(var(--accent) / 0.08),
+        transparent 55%
+      ),
+      hsl(var(--background));
+  }
+
+  .text-display {
+    @apply text-4xl font-semibold leading-tight tracking-[-0.02em] md:text-5xl;
+  }
+
+  .text-heading {
+    @apply text-3xl font-semibold leading-tight tracking-[-0.015em];
+  }
+
+  .text-title {
+    @apply text-2xl font-semibold leading-tight tracking-[-0.01em];
+  }
+
+  .text-subtitle {
+    @apply text-lg font-medium leading-snug;
+  }
+
+  .text-body {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .text-caption {
+    @apply text-xs leading-5 text-muted-foreground;
+  }
+
+  .text-label {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+
+  .surface-base {
+    @apply rounded-xl border border-border/80 bg-surface text-foreground shadow-xs;
+  }
+
+  .surface-card {
+    @apply rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm;
+  }
+
+  .surface-elevated {
+    @apply rounded-xl border border-border/70 bg-card text-card-foreground shadow;
+  }
+
+  .interactive-muted {
+    @apply transition-colors hover:bg-accent/30;
+  }
+
+  .field-base {
+    @apply w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground/90 focus-ring disabled:cursor-not-allowed disabled:bg-disabled disabled:text-muted-foreground;
+  }
+
+  .field-error {
+    @apply border-danger/70 ring-1 ring-danger/20;
+  }
+
+  .field-warning {
+    @apply border-warning/70 ring-1 ring-warning/25;
+  }
+
+  .field-success {
+    @apply border-success/70 ring-1 ring-success/20;
+  }
+}

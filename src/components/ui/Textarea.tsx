@@ -1,15 +1,23 @@
 import { TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils/cn';
+
 export function Textarea({
+  status = 'default',
   className,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  status?: 'default' | 'error' | 'warning' | 'success';
+}) {
   return (
     <textarea
       className={cn(
-        'w-full min-h-32 rounded-lg border border-slate-300 px-3 py-2 focus-ring',
+        'field-base min-h-32 resize-y',
+        status === 'error' && 'field-error',
+        status === 'warning' && 'field-warning',
+        status === 'success' && 'field-success',
         className,
       )}
+      aria-invalid={status === 'error'}
       {...props}
     />
   );

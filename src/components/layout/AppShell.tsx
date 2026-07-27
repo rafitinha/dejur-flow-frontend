@@ -2,28 +2,38 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Menu, Moon, Sun, X } from 'lucide-react';
+import {
+  Bell,
+  FilePlus,
+  Files,
+  LayoutDashboard,
+  Menu,
+  Moon,
+  Settings,
+  Sparkles,
+  Sun,
+  X,
+} from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
+import {
+  applyTheme,
+  getActiveTheme,
+  persistTheme,
+  THEME_EVENT,
+} from '@/lib/theme/theme';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/solicitacoes/nova', label: 'Nova solicitacao' },
-  { href: '/solicitacoes', label: 'Minhas solicitacoes' },
-  { href: '/admin/aprovadas', label: 'DEJUR aprovadas' },
-  { href: '/notificacoes', label: 'Notificacoes' },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/solicitacoes/nova', label: 'Nova solicitação', icon: FilePlus },
+  { href: '/solicitacoes', label: 'Solicitações', icon: Files },
+  { href: '/admin/aprovadas', label: 'Aprovações DEJUR', icon: Sparkles },
+  { href: '/notificacoes', label: 'Notificações', icon: Bell },
 ];
-
-const THEME_STORAGE_KEY = 'app-theme';
-const THEME_EVENT = 'app-theme-change';
 
 function getThemeSnapshot() {
   if (typeof window === 'undefined') return false;
-
-  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  if (savedTheme) return savedTheme === 'dark';
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return getActiveTheme() === 'dark';
 }
 
 function getThemeServerSnapshot() {
@@ -57,8 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
+    applyTheme(isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
   const themeLabel = useMemo(
@@ -67,67 +76,78 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   function toggleTheme() {
-    const next = !isDarkMode;
-    localStorage.setItem(THEME_STORAGE_KEY, next ? 'dark' : 'light');
-    window.dispatchEvent(new Event(THEME_EVENT));
+    persistTheme(isDarkMode ? 'light' : 'dark');
   }
 
   return (
-    <div className="min-h-screen bg-app-gradient text-slate-900 dark:text-slate-100">
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-950/80">
-        <div className="flex w-full items-center justify-between px-4 py-3 md:px-6">
+    <div className="min-h-screen bg-app-gradient text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-lg">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-3 md:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-lg border border-slate-300 p-2 dark:border-slate-600"
+              className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-surface text-foreground shadow-xs transition hover:bg-hover lg:hidden"
               onClick={() => setIsSidebarOpen((state) => !state)}
               aria-label="Abrir menu"
             >
               {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-500">
-                GEQ
-              </p>
-              <h1 className="text-lg font-bold">Validador Judicial</h1>
+              <p className="text-label text-primary">GEQ</p>
+              <h1 className="text-lg font-semibold tracking-tight">
+                Validador Judicial
+              </h1>
             </div>
           </div>
-          <button
-            type="button"
-            title={themeLabel}
-            onClick={toggleTheme}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600"
-          >
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-            <span className="hidden sm:inline">
-              {isDarkMode ? 'Tema claro' : 'Tema escuro'}
-            </span>
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              title={themeLabel}
+              onClick={toggleTheme}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-xs transition hover:bg-hover"
+            >
+              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+              <span className="hidden sm:inline">
+                {isDarkMode ? 'Tema claro' : 'Tema escuro'}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground shadow-xs transition hover:bg-hover"
+              aria-label="Configurações"
+            >
+              <Settings size={15} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="flex w-full">
+      <div className="mx-auto flex w-full max-w-[1600px]">
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white p-5 pt-20 shadow-xl transition-transform duration-300 ease-out dark:border-slate-700 dark:bg-slate-950',
+            'fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-surface p-5 pt-20 shadow-xl transition-transform duration-300 ease-out lg:static lg:translate-x-0 lg:border-r lg:pt-8 lg:shadow-none',
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         >
-          <nav className="grid gap-2 text-sm">
+          <nav className="grid gap-2 text-sm" aria-label="Navegação principal">
             {navItems.map((item) => {
+              const Icon = item.icon;
               const isActive = pathname === item.href;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsSidebarOpen(false)}
                   className={cn(
-                    'rounded-lg px-3 py-2 transition',
+                    'inline-flex items-center gap-2 rounded-md px-3 py-2.5 transition',
                     isActive
-                      ? 'bg-brand-700 text-white shadow-sm'
-                      : 'text-slate-700 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800',
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-hover hover:text-foreground',
                   )}
                 >
+                  <Icon size={16} aria-hidden="true" />
                   {item.label}
                 </Link>
               );
@@ -138,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {isSidebarOpen && (
           <button
             type="button"
-            className="fixed inset-0 z-40 bg-slate-950/40"
+            className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] lg:hidden"
             aria-label="Fechar menu"
             onClick={() => setIsSidebarOpen(false)}
           />

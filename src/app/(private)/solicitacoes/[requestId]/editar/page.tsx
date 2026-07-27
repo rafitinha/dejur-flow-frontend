@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 import { getRequestById } from '@/features/requests/api';
 
@@ -21,29 +24,36 @@ export default async function RequestEditPage({
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Edicao de solicitacao</h1>
+        <h1 className="text-heading">Edição de solicitação</h1>
         <Link
           href="/solicitacoes"
-          className="rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600"
+          className={buttonVariants({ variant: 'outline', size: 'md' })}
         >
-          Voltar
+          <ArrowLeft size={14} /> Voltar
         </Link>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Estrutura inicial pronta para edicao da solicitacao {requestId}.
-        </p>
-        {errorMessage ? (
-          <p className="mt-4 rounded border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
-            {errorMessage}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-subtitle">
+            <Pencil size={16} /> Estrutura de edição
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-body">
+            Estrutura inicial pronta para edicao da solicitacao {requestId}.
           </p>
-        ) : (
-          <pre className="mt-4 overflow-x-auto rounded bg-slate-950 p-4 text-xs text-slate-100">
-            {JSON.stringify(detail, null, 2)}
-          </pre>
-        )}
-      </div>
+          {errorMessage ? (
+            <p className="mt-4 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+              {errorMessage}
+            </p>
+          ) : (
+            <pre className="mt-4 overflow-x-auto rounded-md border border-border bg-foreground p-4 text-xs text-background">
+              {JSON.stringify(detail, null, 2)}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

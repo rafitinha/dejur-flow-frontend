@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
-import { Montserrat, Source_Sans_3 } from 'next/font/google';
+import { Manrope, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/layout/Providers';
 
-const headingFont = Montserrat({
+const headingFont = Manrope({
   subsets: ['latin'],
   variable: '--font-heading',
   display: 'swap',
 });
 
-const bodyFont = Source_Sans_3({
+const bodyFont = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-body',
   display: 'swap',
