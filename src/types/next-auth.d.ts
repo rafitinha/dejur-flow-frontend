@@ -1,20 +1,21 @@
-import 'next-auth';
+import type { DefaultSession } from 'next-auth';
+import type { Role } from '@/features/requests/types';
 
 declare module 'next-auth' {
   interface Session {
     accessToken?: string;
-    user: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      roles: string[];
+    error?: 'RefreshAccessTokenError';
+    user: DefaultSession['user'] & {
+      roles: Role[]; groups: string[]; photo?: string; photoUpdatedAt?: string;
+      jobTitle?: string; department?: string; companyName?: string;
     };
   }
 }
-
 declare module 'next-auth/jwt' {
   interface JWT {
-    accessToken?: string;
-    roles?: string[];
+    accessToken?: string; accessTokenExpires?: number; refreshToken?: string;
+    roles?: Role[]; groups?: string[]; photo?: string; photoUpdatedAt?: string;
+    jobTitle?: string; department?: string; companyName?: string;
+    error?: 'RefreshAccessTokenError';
   }
 }

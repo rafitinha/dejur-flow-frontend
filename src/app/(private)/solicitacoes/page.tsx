@@ -65,26 +65,13 @@ export default function RequestsPage() {
         endDate: activeFilters.endDate || undefined,
         status: activeFilters.status || undefined,
         debtorCnpj: activeFilters.debtorCnpj || undefined,
+        pageIndex: query.pageIndex,
+        pageSize: query.pageSize,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
       });
-
-      const sorted = [...data];
-      if (query.sortBy) {
-        sorted.sort((left, right) => {
-          const leftValue = String(
-            left[query.sortBy as keyof JudicialRequestListItem] ?? '',
-          );
-          const rightValue = String(
-            right[query.sortBy as keyof JudicialRequestListItem] ?? '',
-          );
-          const result = leftValue.localeCompare(rightValue, 'pt-BR', {
-            numeric: true,
-          });
-          return query.sortDirection === 'desc' ? -result : result;
-        });
-      }
-
-      setTotalCount(sorted.length);
-      setItems(sorted.slice(query.offset, query.offset + query.pageSize));
+      setTotalCount(data.totalCount);
+      setItems(data.items);
     } catch {
       setError('Nao foi possivel carregar as solicitacoes no momento.');
     } finally {

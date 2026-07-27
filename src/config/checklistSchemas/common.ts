@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { isValidCnpj } from '@/lib/utils/cnpj';
 
-export const cnpjSchema = z.string().min(14, 'CNPJ obrigatório');
+export const cnpjSchema = z.string().min(14, 'CNPJ obrigatório').refine(isValidCnpj, 'CNPJ inválido');
 export const moneySchema = z.coerce
   .number()
   .gt(0, 'Valor deve ser maior que zero');

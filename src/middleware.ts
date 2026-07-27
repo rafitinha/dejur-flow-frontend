@@ -32,5 +32,5 @@ export default isAuthGuardEnabled
     };
 
 export const config = {
-  matcher: ['/(private)/:path*'],
+  matcher: ['/dashboard/:path*', '/solicitacoes/:path*', '/admin/:path*', '/notificacoes/:path*'],
 };

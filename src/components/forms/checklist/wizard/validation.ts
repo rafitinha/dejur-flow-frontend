@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { ChecklistType } from '@/features/requests/types';
 import { allowedMimeTypes } from './helpers';
 import { checklistTypes, Step2VariantStrategy, WizardFormData } from './types';
+import { isValidCnpj } from '@/lib/utils/cnpj';
 
 const cnpjSchema = z
   .string()
-  .regex(/^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/, 'CNPJ invalido');
+  .regex(/^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/, 'CNPJ inválido')
+  .refine(isValidCnpj, 'CNPJ inválido (dígito verificador incorreto)');
 
 const requiredText = (message: string, min = 1) => z.string().min(min, message);
 const numericText = (message: string) => z.string().regex(/^\d+$/, message);

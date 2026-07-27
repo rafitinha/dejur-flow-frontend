@@ -1,7 +1,5 @@
 import { JudicialRequestListItem } from './types';
 
-const isAuthGuardEnabled = process.env.ENABLE_AUTH_GUARD === 'true';
-
 const baseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   process.env.NEXT_PUBLIC_BACKEND_URL ??
@@ -9,7 +7,7 @@ const baseUrl =
 
 /** Monta headers de autenticação condicionalmente. */
 function buildHeaders(accessToken?: string): HeadersInit {
-  if (!isAuthGuardEnabled || !accessToken) return {};
+  if (!accessToken) return {};
   return { Authorization: `Bearer ${accessToken}` };
 }
 

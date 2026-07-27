@@ -1,6 +1,8 @@
 'use client';
 import { LogIn } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { createElement } from 'react';
 import { Button } from '@/components/ui/Button';
 import {
   Card,
@@ -11,6 +13,8 @@ import {
 } from '@/components/ui/Card';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const authEnabled = process.env.NEXT_PUBLIC_ENABLE_AUTH_GUARD === 'true';
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <Card className="w-full max-w-md shadow-lg">
@@ -30,6 +34,16 @@ export default function LoginPage() {
           >
             <LogIn size={16} /> Entrar com Microsoft
           </Button>
+          {!authEnabled &&
+            createElement(
+              Button,
+              {
+                variant: 'outline',
+                className: 'mt-3 w-full',
+                onClick: () => router.push('/dashboard'),
+              },
+              'Acessar ambiente sem autenticação',
+            )}
         </CardContent>
       </Card>
     </main>

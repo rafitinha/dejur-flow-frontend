@@ -1,8 +1,8 @@
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShellFluid } from '@/components/layout/AppShellFluid';
 export default function PrivateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return <AppShellFluid>{children}</AppShellFluid>;
 }
