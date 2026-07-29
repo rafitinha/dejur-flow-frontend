@@ -91,78 +91,95 @@ export function Wizard({
         </div>
       </div>
 
-      <div className="relative hidden md:block">
-        <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-border/80" />
-        <motion.div
-          className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-primary via-accent to-success"
-          initial={false}
-          animate={{ width: `${progressPercentage}%` }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        />
+      <div className="hidden md:block">
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-border/80" />
+          <motion.div
+            className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-primary"
+            initial={false}
+            animate={{ width: `${progressPercentage}%` }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          />
 
-        <ol
-          className="relative grid gap-3"
-          style={{
-            gridTemplateColumns: `repeat(${Math.max(steps.length, 1)}, minmax(0, 1fr))`,
-          }}
-        >
-          {steps.map((step, index) => {
-            const isCurrent = index === safeCurrentStep;
-            const isInvalid = invalidSteps.includes(index);
-            const isCompleted =
-              index < safeCurrentStep && completedSteps[index] && !isInvalid;
-            const StepIcon = isCompleted ? Check : step.icon;
+          <ol
+            className="relative grid gap-3"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(steps.length, 1)}, minmax(0, 1fr))`,
+            }}
+          >
+            {steps.map((step, index) => {
+              const isCurrent = index === safeCurrentStep;
+              const isInvalid = invalidSteps.includes(index);
+              const isCompleted =
+                index < safeCurrentStep && completedSteps[index] && !isInvalid;
+              const StepIcon = isCompleted ? Check : step.icon;
 
-            return (
-              <li key={step.title} className="relative min-w-0">
-                <motion.button
-                  type="button"
-                  onClick={() => onStepChange?.(index)}
-                  aria-current={isCurrent ? 'step' : undefined}
-                  aria-label={`Etapa ${index + 1} de ${steps.length}: ${step.title}`}
-                  className={cn(
-                    'focus-ring flex h-12 w-full min-w-0 items-center gap-2 rounded-xl border px-3 text-left text-sm font-medium whitespace-nowrap transition will-change-transform md:h-14',
-                    isCompleted &&
-                      'border-success/35 bg-success text-white shadow-sm',
-                    isCurrent &&
-                      'border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.14),0_16px_32px_-18px_hsl(var(--primary)/0.7)]',
-                    !isCurrent &&
-                      !isCompleted &&
-                      !isInvalid &&
-                      'border-border/80 bg-transparent text-muted-foreground hover:border-primary/20 hover:bg-hover/60',
-                    isInvalid &&
-                      'border-danger/45 bg-danger/10 text-danger shadow-sm',
-                  )}
-                  initial={false}
-                  animate={
-                    isCurrent ? { y: -1, scale: 1.01 } : { y: 0, scale: 1 }
-                  }
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <span
+              return (
+                <li key={step.title} className="relative min-w-0">
+                  <motion.button
+                    type="button"
+                    onClick={() => onStepChange?.(index)}
+                    title={step.title}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    aria-label={`Etapa ${index + 1} de ${steps.length}: ${step.title}`}
                     className={cn(
-                      'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border text-xs transition',
-                      isCompleted && 'border-white/15 bg-white/15 text-white',
-                      isCurrent && 'border-white/15 bg-white/12 text-white',
+                      'focus-ring flex h-12 w-full min-w-0 items-center gap-2 rounded-xl border px-3 text-left text-sm font-medium whitespace-nowrap transition will-change-transform md:h-14 md:max-2xl:justify-center md:max-2xl:px-0',
+                      isCompleted &&
+                        'border-success/35 bg-success text-white shadow-sm',
+                      isCurrent &&
+                        'border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.14),0_16px_32px_-18px_hsl(var(--primary)/0.7)]',
                       !isCurrent &&
                         !isCompleted &&
                         !isInvalid &&
-                        'border-border bg-background text-muted-foreground',
-                      isInvalid && 'border-danger/20 bg-danger/10 text-danger',
-                    )}
-                    aria-hidden="true"
+                        'border-border/80 bg-background/55 text-muted-foreground hover:border-primary/20 hover:bg-hover/60',
+                      isInvalid &&
+                        'border-danger/45 bg-danger/10 text-danger shadow-sm',                    )}
+                    initial={false}
+                    animate={
+                      isCurrent ? { y: -1, scale: 1.01 } : { y: 0, scale: 1 }
+                    }
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <StepIcon size={15} />
-                  </span>
+                    <span
+                      className={cn(
+                        'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border text-xs transition',
+                        isCompleted &&
+                          'border-white/15 bg-white/15 text-white',
+                        isCurrent && 'border-white/15 bg-white/12 text-white',
+                        !isCurrent &&
+                          !isCompleted &&
+                          !isInvalid &&
+                          'border-border bg-background text-muted-foreground',
+                        isInvalid && 'border-danger/20 bg-danger/10 text-danger',                      )}
+                      aria-hidden="true"
+                    >
+                      <StepIcon size={15} />
+                    </span>
 
-                  <span className="min-w-0 flex-1 overflow-hidden text-ellipsis leading-none">
-                    {step.title}
-                  </span>
-                </motion.button>
-              </li>
-            );
-          })}
-        </ol>
+                    <span className="min-w-0 flex-1 overflow-hidden text-ellipsis leading-none md:max-2xl:hidden 2xl:block">
+                      {step.title}
+                    </span>
+                  </motion.button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.p
+            key={activeStep?.title ?? safeCurrentStep}
+            className="mt-4 hidden justify-center md:flex 2xl:hidden"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-sm font-semibold text-primary shadow-sm">
+              {activeStep?.title}
+            </span>
+          </motion.p>
+        </AnimatePresence>
       </div>
     </nav>
   );

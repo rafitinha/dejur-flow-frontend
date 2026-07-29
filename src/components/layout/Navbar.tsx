@@ -8,7 +8,7 @@ export function Navbar() {
   const cycle = useLayoutStore((state) => state.cycleSidebar);
   const { isDark, themeLabel, toggleTheme } = useTheme();
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-lg">
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-lg">
       <div className="flex w-full items-center justify-between px-4 py-3 md:px-8 md:pl-4">
         <div className="flex items-center gap-3">
           <button

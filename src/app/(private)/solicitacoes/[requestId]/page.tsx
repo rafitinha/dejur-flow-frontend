@@ -18,7 +18,7 @@ export default async function RequestDetailPage({
   try {
     detail = await getRequestById(requestId);
   } catch {
-    errorMessage = 'Nao foi possivel carregar os detalhes da solicitacao.';
+    errorMessage = 'Não foi possivel carregar os detalhes da solicitação.';
   }
 
   return (

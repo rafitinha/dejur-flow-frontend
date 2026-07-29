@@ -166,7 +166,7 @@ export function ChecklistWizard() {
     <section className="surface-elevated space-y-6 p-6 md:p-8">
       <div className="space-y-1">
         <p className="text-label">Fluxo guiado</p>
-        <h1 className="text-heading">Nova solicitacao</h1>
+        <h1 className="text-heading">Nova Solicitação</h1>
       </div>
 
       <Wizard
