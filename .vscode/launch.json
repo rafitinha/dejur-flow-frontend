@@ -2,10 +2,24 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Next.js: dev",
+      "name": "Next.js: servidor",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev"
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Next.js: navegador",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://_N_E/*": "${webRoot}/*",
+        "webpack:///*": "${webRoot}/*",
+        "turbopack:///*": "${webRoot}/*"
+      }
     },
     {
       "name": "Vitest: watch",
@@ -24,6 +38,13 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run mock:api"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Next.js: full stack",
+      "configurations": ["Next.js: servidor", "Next.js: navegador"],
+      "stopAll": true
     }
   ]
 }
