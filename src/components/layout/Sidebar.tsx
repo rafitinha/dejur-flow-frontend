@@ -37,7 +37,8 @@ export function Sidebar() {
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
-    const shouldLockScroll = isDrawerOpen && viewportWidth !== null && viewportWidth < 1024;
+    const shouldLockScroll =
+      isDrawerOpen && viewportWidth !== null && viewportWidth < 1024;
     if (!shouldLockScroll) return;
 
     const previousOverflow = document.body.style.overflow;
@@ -70,10 +71,9 @@ export function Sidebar() {
         aria-label="Navegação principal"
         aria-hidden={state === 'hidden'}
         className={cn(
-          'z-40 shrink-0 overflow-hidden border-r border-border bg-surface lg:relative lg:z-30',
-          isDrawerOpen
-            ? 'fixed inset-y-0 left-0 h-[100dvh] shadow-xl'
-            : 'relative',
+          'z-40 flex shrink-0 flex-col overflow-hidden border-r border-border bg-surface',
+          'lg:relative lg:inset-auto lg:z-30 lg:h-auto lg:self-stretch lg:shadow-none',
+          isDrawerOpen ? 'fixed inset-y-0 left-0 h-dvh shadow-xl' : 'relative',
         )}
       >
         <div className="flex h-full min-w-[68px] flex-col gap-5 overflow-y-auto overscroll-contain p-3 pt-20 lg:pt-3">
