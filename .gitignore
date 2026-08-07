@@ -141,3 +141,48 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ============================================
+# AI Agents / Assistentes de desenvolvimento
+# ============================================
+
+# Agents
+.agents/
+agents/
+
+# Cline
+.cline/
+.clinerules/
+.clinerules
+cline/
+
+# Agent rules
+.rules/
+rules/
+*.rules
+
+# Agent skills
+.skills/
+skills/
+
+# Cloud / configurações locais
+.cloud/
+cloud/
+
+# Arquivos comuns de instrução de agentes
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Configurações locais de ferramentas de IA
+.cursor/
+.windsurf/
+.copilot/
+.github/copilot-instructions.md
+
+# Arquivos locais e temporários
+*.local
+*.log
+.cache/
+tmp/
+temp/
