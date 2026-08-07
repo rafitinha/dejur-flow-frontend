@@ -11,5 +11,31 @@ export function isValidCnpj(value: string): boolean {
     const remainder = sum % 11;
     return remainder < 2 ? 0 : 11 - remainder;
   };
-  return calculate(12) === Number(digits[12]) && calculate(13) === Number(digits[13]);
+  return (
+    calculate(12) === Number(digits[12]) && calculate(13) === Number(digits[13])
+  );
 }
+
+export function formatDocument(value: string): string {
+  const numbersOnly = value.replace(/\D/g, '');
+
+  if (numbersOnly.length === 11) {
+    // CPF: 000.000.000-00
+    return numbersOnly.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+
+  if (numbersOnly.length === 14) {
+    // CNPJ: 00.000.000/0000-00
+    return numbersOnly.replace(
+      /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+      '$1.$2.$3/$4-$5',
+    );
+  }
+
+  return numbersOnly;
+}
+
+/*
+export const documentUtils = {
+  format: formatDocument,
+};*/

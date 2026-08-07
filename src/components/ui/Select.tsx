@@ -8,12 +8,14 @@ export function Select({
   placeholder,
   options,
   disabled,
+  status = 'default',
 }: {
   value?: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
   options: { value: string; label: string }[];
   disabled?: boolean;
+  status?: 'default' | 'error' | 'warning' | 'success';
 }) {
   return (
     <SelectPrimitive.Root
@@ -22,7 +24,12 @@ export function Select({
       disabled={disabled}
     >
       <SelectPrimitive.Trigger
-        className={cn('field-base flex items-center justify-between gap-2')}
+        className={cn(
+          'field-base flex items-center justify-between gap-2',
+          status === 'error' && 'field-error',
+          status === 'warning' && 'field-warning',
+          status === 'success' && 'field-success',
+        )}
       >
         <SelectPrimitive.Value placeholder={placeholder ?? 'Selecione...'} />
         <SelectPrimitive.Icon>

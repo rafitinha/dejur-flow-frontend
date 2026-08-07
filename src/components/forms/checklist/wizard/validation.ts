@@ -7,7 +7,8 @@ import { isValidCnpj } from '@/lib/utils/cnpj';
 const cnpjSchema = z
   .string()
   .regex(/^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/, 'CNPJ inválido')
-  .refine(isValidCnpj, 'CNPJ inválido (dígito verificador incorreto)');
+  .refine(isValidCnpj, 'CNPJ inválido (dígito verificador incorreto)')
+  .transform((value) => value.replace(/\D/g, ''));
 
 const requiredText = (message: string, min = 1) => z.string().min(min, message);
 const numericText = (message: string) => z.string().regex(/^\d+$/, message);
@@ -19,19 +20,24 @@ export const step0Schema = z.object({
 });
 
 export function createStep1Schema(stateCodeSet: Set<string>) {
-  return z.object({
-    companyLegalName: requiredText('Razao social obrigatoria.', 3),
-    companyCnpj: cnpjSchema,
-    companyUf: z
-      .string()
-      .length(2, 'Selecione a UF.')
-      .refine((value) => stateCodeSet.has(value), 'UF invalida.'),
-    companyCity: requiredText('Selecione a cidade.', 2),
-    debtorLegalName: requiredText('Nome da devedora obrigatorio.', 3),
-    debtorCnpj: cnpjSchema,
-    debtorAddress: requiredText('Endereco completo obrigatorio.', 5),
-    addressConfirmedBy: requiredText('Informe quem confirmou o endereco.', 3),
-  });
+  return z
+    .object({
+      companyLegalName: requiredText('Razao social obrigatoria.', 3),
+      companyCnpj: cnpjSchema,
+      companyUf: z
+        .string()
+        .length(2, 'Selecione a UF.')
+        .refine((value) => stateCodeSet.has(value), 'UF invalida.'),
+      companyCity: requiredText('Selecione a cidade.', 2),
+      debtorLegalName: requiredText('Nome da devedora obrigatorio.', 3),
+      debtorCnpj: cnpjSchema,
+      debtorAddress: requiredText('Endereco completo obrigatorio.', 5),
+      addressConfirmedBy: requiredText('Informe quem confirmou o endereco.', 3),
+    })
+    .refine((data) => data.companyCnpj !== data.debtorCnpj, {
+      message: 'O CNPJ da empresa nao pode ser igual ao CNPJ da devedora.',
+      path: ['debtorCnpj'],
+    });
 }
 
 const step2RecoverySchema = z.object({
@@ -66,30 +72,35 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
         label: 'Qtd P-13',
         required: true,
         inputMode: 'numeric',
+        parser: 'toDigits',
       },
       {
         key: 'rvP20',
         label: 'Qtd P-20',
         required: true,
         inputMode: 'numeric',
+        parser: 'toDigits',
       },
       {
         key: 'rvP45',
         label: 'Qtd P-45',
         required: true,
         inputMode: 'numeric',
+        parser: 'toDigits',
       },
       {
         key: 'rvHistoricalAmount',
         label: 'Valor historico',
         required: true,
         placeholder: 'Ex.: 12000,00',
+        parser: 'toMoneyMask',
       },
       {
         key: 'rvUpdatedAmount',
         label: 'Valor total atualizado',
         required: true,
         placeholder: 'Ex.: 14500,50',
+        parser: 'toMoneyMask',
       },
       {
         key: 'rvRefusalReason',
@@ -107,6 +118,7 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
         label: 'Numero do titulo',
         required: true,
         inputMode: 'numeric',
+        parser: 'toDigits',
       },
       { key: 'ctGuarantor', label: 'Avalista/Fiador', required: true },
       {
@@ -127,15 +139,22 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
       },
       {
         key: 'mcFirstCycleFinished',
-        label: '1 ciclo finalizado?',
+        label: 'Primeiro ciclo finalizado?',
         required: true,
         placeholder: 'SIM ou NAO',
+        type: 'radio',
+        options: [
+          { label: 'YES', value: 'Sim' },
+          { label: 'NO', value: 'Não' },
+        ],
+        parser: 'toUpperCase',
       },
       {
         key: 'mcMaxDiscount',
         label: 'Maior desconto autorizado',
         required: true,
         placeholder: 'Ex.: 15,00',
+        parser: 'toMoneyMask',
       },
     ],
   },

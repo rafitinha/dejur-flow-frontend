@@ -1,11 +1,11 @@
-import { JudicialRequestListItem } from './types';
+﻿import { JudicialRequestListItem } from './types';
 
 const baseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   process.env.NEXT_PUBLIC_BACKEND_URL ??
   'http://localhost:8080';
 
-/** Monta headers de autenticação condicionalmente. */
+/** Monta headers de autenticaÃ§Ã£o condicionalmente. */
 function buildHeaders(accessToken?: string): HeadersInit {
   if (!accessToken) return {};
   return { Authorization: `Bearer ${accessToken}` };
@@ -32,7 +32,7 @@ export type PaginatedResponse<T> = {
 };
 
 // ---------------------------------------------------------------------------
-// Funções de API
+// FunÃ§Ãµes de API
 // ---------------------------------------------------------------------------
 
 export async function listMyRequests(
@@ -59,12 +59,15 @@ export async function listMyRequests(
     headers: buildHeaders(accessToken),
   });
 
-  if (!r.ok) throw new Error('Erro ao consultar solicitações');
+  if (!r.ok) throw new Error('Erro ao consultar solicitaÃ§Ãµes');
 
   // Suporte a payload paginado (PaginatedResponse) e array legado
   const body = await r.json();
   if (Array.isArray(body)) {
-    return { items: body as JudicialRequestListItem[], totalCount: body.length };
+    return {
+      items: body as JudicialRequestListItem[],
+      totalCount: body.length,
+    };
   }
   return body as PaginatedResponse<JudicialRequestListItem>;
 }
@@ -93,36 +96,46 @@ export async function listApprovedRequests(
     headers: buildHeaders(accessToken),
   });
 
-  if (!r.ok) throw new Error('Erro ao consultar solicitações aprovadas');
+  if (!r.ok) throw new Error('Erro ao consultar solicitaÃ§Ãµes aprovadas');
 
   const body = await r.json();
   if (Array.isArray(body)) {
-    return { items: body as JudicialRequestListItem[], totalCount: body.length };
+    return {
+      items: body as JudicialRequestListItem[],
+      totalCount: body.length,
+    };
   }
   return body as PaginatedResponse<JudicialRequestListItem>;
 }
 
-export async function getRequestById(
-  requestId: string,
-  accessToken?: string,
-) {
+export async function getRequestById(requestId: string, accessToken?: string) {
   const r = await fetch(`${baseUrl}/api/v1/requests/${requestId}`, {
     cache: 'no-store',
     headers: buildHeaders(accessToken),
   });
-  if (!r.ok) throw new Error('Erro ao consultar detalhes da solicitação');
+  if (!r.ok) throw new Error('Erro ao consultar detalhes da solicitaÃ§Ã£o');
   return r.json();
 }
 
-export async function submitRequest(
-  formData: FormData,
-  accessToken?: string,
-) {
+export async function submitRequest(formData: FormData, accessToken?: string) {
   const r = await fetch(`${baseUrl}/api/v1/requests/submit`, {
     method: 'POST',
     body: formData,
     headers: buildHeaders(accessToken),
   });
-  if (!r.ok) throw new Error('Erro ao submeter solicitação');
+  if (!r.ok) throw new Error('Erro ao submeter solicitaÃ§Ã£o');
+  return r.json();
+}
+export async function updateRequest(
+  requestId: string,
+  formData: FormData,
+  accessToken?: string,
+) {
+  const r = await fetch(`${baseUrl}/api/v1/requests/${requestId}`, {
+    method: 'PUT',
+    body: formData,
+    headers: buildHeaders(accessToken),
+  });
+  if (!r.ok) throw new Error('Erro ao atualizar solicitação');
   return r.json();
 }

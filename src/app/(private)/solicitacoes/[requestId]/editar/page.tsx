@@ -1,52 +1,29 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { ArrowLeft, Pencil, Download, RefreshCw } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
 
+import {
+  ChecklistWizard,
+  ExistingDocument,
+} from '@/components/forms/checklist/ChecklistWizard';
+import {
+  WizardFormData,
+  initialWizardForm,
+} from '@/components/forms/checklist/wizard/types';
 import { buttonVariants } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { getRequestById } from '@/features/requests/api';
-import { RequestStatus } from '@/features/requests/types';
+import { getRequestById, updateRequest } from '@/features/requests/api';
+import {
+  ChecklistType,
+  RequestStatus,
+  JudicialRequestDetail,
+  JudicialRequestDetailType,
+} from '@/features/requests/types';
 
-interface Document {
-  name?: string;
-  type?: string;
-  size?: number;
-  uploadedAt?: string;
-  downloadUrl?: string;
-}
-
-interface StructuredReport {
-  checklistType?: string;
-  debtor?: string;
-  amount?: number;
-  mainFacts?: string[];
-  legalReadiness?: string;
-}
-
-interface JudicialRequestDetail {
-  requestId: string;
-  status: RequestStatus;
-  score?: number;
-  summary?: string;
-  structuredReport?: StructuredReport;
-  missingFields?: string[];
-  missingDocuments?: string[];
-  inconsistencies?: string[];
-  recommendations?: string[];
-  canResubmit?: boolean;
-  reviewedAt?: string;
-  checklistType?: string;
-  debtorName?: string;
-  debtorCnpj?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  createdByEmail?: string;
-  llmScore?: number;
-  documents?: Document[];
-}
+import { formatDocument } from '@/lib/utils/cnpj';
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -79,16 +56,116 @@ const isEditableStatus = (status: RequestStatus) => {
   return ['DRAFT', 'NEEDS_CORRECTION', 'ERROR'].includes(status);
 };
 
+const wizardFormKeys = Object.keys(initialWizardForm) as Array<
+  keyof WizardFormData
+>;
+
+function extractWizardFormData(
+  detail: JudicialRequestDetail | JudicialRequestDetailType,
+): Partial<WizardFormData> {
+  const fromFormData = (detail as JudicialRequestDetailType).formData;
+
+  const result: Partial<WizardFormData> = {};
+
+  //companyLegalName
+
+  result['companyLegalName'] = (detail as JudicialRequestDetail).company.name;
+
+  for (const key of wizardFormKeys) {
+    const valueFromFormData = fromFormData?.[key];
+    if (typeof valueFromFormData === 'string') {
+      result[key] = valueFromFormData;
+      continue;
+    }
+
+    const valueFromDetail = (detail as unknown as Record<string, unknown>)[
+      key as string
+    ];
+    if (typeof valueFromDetail === 'string') {
+      result[key] = valueFromDetail;
+    }
+  }
+
+  const wizard = mapRequestDetailToWizardForm(detail as JudicialRequestDetail);
+
+  // return result;
+  return wizard;
+}
+
+export function mapRequestDetailToWizardForm(
+  detail: JudicialRequestDetail,
+): Partial<WizardFormData> {
+  return {
+    // Empresa
+    companyLegalName: detail.company.name,
+    companyCnpj: formatDocument(detail.company.cnpj),
+    companyUf: detail.company.uf,
+    companyCity: detail.company.city,
+
+    // Devedor
+    debtorLegalName: detail.debtor.name,
+    debtorCnpj: formatDocument(detail.debtor.cnpj),
+
+    // Não existem no novo DTO
+    debtorAddress: '',
+    addressConfirmedBy: '',
+
+    // RV
+    rvP13: '',
+    rvP20: '',
+    rvP45: '',
+    rvHistoricalAmount: detail.financial.amount.toString(),
+    rvUpdatedAmount: detail.financial.amount.toString(),
+    rvRefusalReason: '',
+
+    // Cobrança de títulos
+    ctTitleType: '',
+    ctTitleNumber: '',
+    ctGuarantor: '',
+    ctOtherGuarantees: '',
+
+    // Multa contratual
+    mcContractType: '',
+    mcBreachedClause: '',
+    mcFirstCycleFinished: '',
+    mcMaxDiscount: '',
+
+    // Tentativas de acordo
+    agreementDetails: detail.agreementAttempts
+      .map(
+        (attempt) => `${attempt.date} - ${attempt.channel}: ${attempt.result}`,
+      )
+      .join('\n'),
+
+    // Financeiro
+    financialDetails: [
+      `Valor: ${detail.financial.amount} ${detail.financial.currency}`,
+      `Vencimento: ${detail.financial.dueDate}`,
+    ].join('\n'),
+
+    // Fatos
+    factsSummary: [
+      detail.factsSummary,
+      ...(detail.llmResult?.recommendations ?? []),
+    ].join('\n'),
+
+    // Parecer
+    opinionDetails:
+      detail.llmResult?.summary ?? detail.opinion.recommendedAction,
+  };
+}
+
 export default function RequestEditPage({
   params,
 }: {
   params: Promise<{ requestId: string }>;
 }) {
   const { requestId } = use(params);
-  const [detail, setDetail] = useState<JudicialRequestDetail | null>(null);
+  const [detail, setDetail] = useState<JudicialRequestDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadAttempt, setReloadAttempt] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +278,63 @@ export default function RequestEditPage({
     );
   }
 
+  if (isEditing) {
+    if (!detail.checklistType) {
+      return (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-heading">Não foi possível editar</h1>
+            <Link
+              href="/solicitacoes"
+              className={buttonVariants({ variant: 'outline', size: 'md' })}
+            >
+              <ArrowLeft size={14} /> Voltar
+            </Link>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-body">
+                A solicitação não possui um tipo de checklist definido.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      );
+    }
+
+    return (
+      <ChecklistWizard
+        mode="edit"
+        requestId={requestId}
+        initialChecklistType={detail.checklistType}
+        initialFormData={extractWizardFormData(detail)}
+        existingDocuments={detail.documents ?? []}
+        onCancel={() => setIsEditing(false)}
+        onSubmit={async ({
+          checklistType,
+          formData,
+          newFiles,
+          existingDocuments,
+        }) => {
+          const payload = {
+            requestId,
+            checklistType,
+            ...formData,
+            existingDocuments,
+          };
+
+          const fd = new FormData();
+          fd.append('metadata', JSON.stringify(payload));
+          newFiles.forEach((file) => fd.append('files', file));
+
+          await updateRequest(requestId, fd);
+          setIsEditing(false);
+          setReloadAttempt((current) => current + 1);
+        }}
+      />
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -218,6 +352,7 @@ export default function RequestEditPage({
           <button
             type="button"
             className={buttonVariants({ variant: 'primary', size: 'md' })}
+            onClick={() => setIsEditing(true)}
           >
             <Pencil size={14} className="mr-2" /> Editar
           </button>

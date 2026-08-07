@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { getCities } from '@brazilian-utils/brazilian-utils';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { RadioGroup } from '@/components/ui/Radio';
 import { Textarea } from '@/components/ui/Textarea';
 import { ChecklistType } from '@/features/requests/types';
 import { cn } from '@/lib/utils/cn';
@@ -16,6 +18,7 @@ import {
 import { stateOptions } from './helpers';
 import { step2Strategies } from './validation';
 import { UpdateWizardFieldFn, WizardFormData } from './types';
+import { ParserType } from '@/components/forms/checklist/wizard/types';
 
 export function FieldWrapper({
   label,
@@ -501,20 +504,17 @@ export function VariantFieldsSection({
       {strategy.fields.map((field) => {
         const value = formData[field.key] as string;
 
-        const parserByField: Partial<
-          Record<keyof WizardFormData, (raw: string) => string>
-        > = {
-          rvP13: toDigits,
-          rvP20: toDigits,
-          rvP45: toDigits,
-          ctTitleNumber: toDigits,
-          rvHistoricalAmount: toMoneyMask,
-          rvUpdatedAmount: toMoneyMask,
-          mcMaxDiscount: toMoneyMask,
-          mcFirstCycleFinished: (raw) => raw.toUpperCase(),
+        const parsers: Record<ParserType, (value: string) => string> = {
+          toDigits,
+          toMoneyMask,
+          toUpperCase: (value) => value.toUpperCase(),
         };
 
-        const parser = parserByField[field.key] ?? ((raw: string) => raw);
+        function getParser(parser?: ParserType) {
+          return parser ? parsers[parser] : (value: string) => value;
+        }
+
+        const parser = getParser(field.parser);
 
         return (
           <FieldWrapper
@@ -523,15 +523,30 @@ export function VariantFieldsSection({
             required={field.required}
             error={errors[String(field.key)]}
           >
-            <Input
-              value={value}
-              onChange={(event) =>
-                updateField(field.key, parser(event.target.value))
-              }
-              inputMode={field.inputMode}
-              placeholder={field.placeholder}
-              status={errors[String(field.key)] ? 'error' : 'default'}
-            />
+            {field.type === 'select' ? (
+              <Select
+                value={value}
+                onValueChange={(value) => updateField(field.key, value)}
+                placeholder={field.placeholder}
+                options={field.options ?? []}
+              />
+            ) : field.type === 'radio' ? (
+              <RadioGroup
+                value={value}
+                onValueChange={(value) => updateField(field.key, value)}
+                options={field.options ?? []}
+              />
+            ) : (
+              <Input
+                value={value}
+                onChange={(event) =>
+                  updateField(field.key, parser(event.target.value))
+                }
+                inputMode={field.inputMode}
+                placeholder={field.placeholder}
+                status={errors[String(field.key)] ? 'error' : 'default'}
+              />
+            )}
           </FieldWrapper>
         );
       })}

@@ -81,6 +81,8 @@ export type UpdateWizardFieldFn = <K extends keyof WizardFormData>(
   value: WizardFormData[K],
 ) => void;
 
+export type ParserType = 'toDigits' | 'toMoneyMask' | 'toUpperCase';
+
 export type Step2VariantStrategy = {
   checklistType: ChecklistType;
   fields: Array<{
@@ -89,6 +91,13 @@ export type Step2VariantStrategy = {
     required?: boolean;
     placeholder?: string;
     inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
-    parser?: (value: string) => string;
+    parser?: ParserType;
+
+    type?: 'input' | 'select' | 'radio';
+
+    options?: Array<{
+      label: string;
+      value: string;
+    }>;
   }>;
 };
