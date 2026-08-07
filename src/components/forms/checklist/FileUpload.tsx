@@ -1,25 +1,20 @@
-import React, { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
   FileText,
   LoaderCircle,
+  RotateCcw,
   Trash2,
   UploadCloud,
 } from 'lucide-react';
 
-type UploadStatus = 'pending' | 'uploading' | 'success' | 'error';
-
-type UploadFile = {
-  id: string;
-  file: File;
-  status: UploadStatus;
-  error?: string;
-};
+import type { UploadItem } from '@/types/upload';
 
 type FileUploadProps = {
-  onFiles: (files: File[]) => void | Promise<void>;
-  onRemove?: (file: File) => void;
+  items: UploadItem[];
+  onAdd: (files: File[]) => Promise<void> | void;
+  onRemove: (item: UploadItem) => Promise<void> | void;
   error?: string;
   maxTotalSizeMB?: number;
   accept?: string;
@@ -33,30 +28,74 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function createFileId(file: File) {
-  return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
+function getStatusContent(item: UploadItem) {
+  switch (item.status) {
+    case 'existing':
+      return <span className="text-slate-600">Já anexado</span>;
+    case 'pending_upload':
+      return <span className="text-blue-600">Será enviado na confirmação</span>;
+    case 'pending_delete':
+      return (
+        <span className="inline-flex items-center gap-1 text-red-600">
+          <AlertCircle size={13} aria-hidden="true" />
+          Será removido na confirmação
+        </span>
+      );
+    case 'uploading':
+      return (
+        <span className="inline-flex items-center gap-1 text-blue-600">
+          <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+          Enviando...
+        </span>
+      );
+    case 'deleting':
+      return (
+        <span className="inline-flex items-center gap-1 text-red-600">
+          <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+          Removendo...
+        </span>
+      );
+    case 'success':
+      return (
+        <span className="inline-flex items-center gap-1 text-emerald-600">
+          <CheckCircle2 size={13} aria-hidden="true" />
+          Enviado
+        </span>
+      );
+    case 'error':
+      return (
+        <span
+          className="inline-flex items-center gap-1 text-red-600"
+          title={item.error}
+        >
+          <AlertCircle size={13} aria-hidden="true" />
+          Erro no envio
+        </span>
+      );
+  }
 }
 
 export function FileUpload({
-  onFiles,
+  items,
+  onAdd,
   onRemove,
   error,
   maxTotalSizeMB = 10,
   accept = DEFAULT_ACCEPT,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [items, setItems] = useState<UploadFile[]>([]);
   const [localError, setLocalError] = useState<string>();
   const maxBytes = maxTotalSizeMB * 1024 * 1024;
 
-  async function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = Array.from(e.target.files ?? []);
+  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.target.files ?? []);
     if (!selectedFiles.length) return;
 
     setLocalError(undefined);
 
     const currentTotal = items.reduce(
-      (total, item) => total + item.file.size,
+      (total, item) =>
+        item.status === 'pending_delete' ? total : total + (item.size ?? 0),
       0,
     );
     const selectedTotal = selectedFiles.reduce(
@@ -68,56 +107,35 @@ export function FileUpload({
       setLocalError(
         `O tamanho total dos arquivos deve ser de até ${maxTotalSizeMB} MB.`,
       );
-      e.target.value = '';
+      event.target.value = '';
       return;
     }
 
-    const newItems: UploadFile[] = selectedFiles.map((file) => ({
-      id: createFileId(file),
-      file,
-      status: 'uploading',
-    }));
-
-    setItems((current) => [...current, ...newItems]);
-
     try {
-      await onFiles(selectedFiles);
-      const uploadedIds = new Set(newItems.map((item) => item.id));
-      setItems((current) =>
-        current.map((item) =>
-          uploadedIds.has(item.id)
-            ? { ...item, status: 'success', error: undefined }
-            : item,
-        ),
-      );
-    } catch (uploadError) {
-      const message =
-        uploadError instanceof Error
-          ? uploadError.message
-          : 'Não foi possível enviar o arquivo.';
-      const failedIds = new Set(newItems.map((item) => item.id));
-      setItems((current) =>
-        current.map((item) =>
-          failedIds.has(item.id)
-            ? { ...item, status: 'error', error: message }
-            : item,
-        ),
+      await onAdd(selectedFiles);
+    } catch (addError) {
+      setLocalError(
+        addError instanceof Error
+          ? addError.message
+          : 'Não foi possível adicionar o arquivo.',
       );
     } finally {
-      e.target.value = '';
+      event.target.value = '';
     }
   }
 
-  function removeFile(id: string) {
-    const itemToRemove = items.find((item) => item.id === id);
+  async function handleRemove(item: UploadItem) {
+    setLocalError(undefined);
 
-    if (!itemToRemove) {
-      return;
+    try {
+      await onRemove(item);
+    } catch (removeError) {
+      setLocalError(
+        removeError instanceof Error
+          ? removeError.message
+          : 'Não foi possível atualizar o arquivo.',
+      );
     }
-
-    setItems((currentItems) => currentItems.filter((item) => item.id !== id));
-
-    onRemove?.(itemToRemove.file);
   }
 
   const visibleError = localError || error;
@@ -167,106 +185,68 @@ export function FileUpload({
 
       {items.length > 0 && (
         <ul className="mt-5 space-y-3" aria-label="Arquivos anexados">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-            >
-              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                <FileText size={19} aria-hidden="true" />
-              </span>
+          {items.map((item) => {
+            const isProcessing =
+              item.status === 'uploading' || item.status === 'deleting';
+            const isUndo = item.status === 'pending_delete';
 
-              <div className="min-w-0 flex-1">
-                <p
-                  className="truncate text-sm font-medium text-slate-900"
-                  title={item.file.name}
-                >
-                  {item.file.name}
-                </p>
-                <div className="mt-1 flex items-center gap-2 text-xs">
-                  <span className="text-slate-500">
-                    {formatFileSize(item.file.size)}
-                  </span>
+            return (
+              <li
+                key={item.id}
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+              >
+                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                  <FileText size={19} aria-hidden="true" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-sm font-medium text-slate-900"
+                    title={item.name}
+                  >
+                    {item.name}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {item.size !== undefined && (
+                      <span className="text-slate-500">
+                        {formatFileSize(item.size)}
+                      </span>
+                    )}
+                    {getStatusContent(item)}
+                  </div>
 
                   {item.status === 'uploading' && (
-                    <span className="inline-flex items-center gap-1 text-blue-600">
-                      <LoaderCircle
-                        className="animate-spin"
-                        size={13}
-                        aria-hidden="true"
-                      />
-                      Processando...
-                    </span>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-500" />
+                    </div>
                   )}
 
-                  {item.status === 'success' && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600">
-                      <CheckCircle2 size={13} aria-hidden="true" />
-                      Adicionado
-                    </span>
-                  )}
-
-                  {item.status === 'error' && (
-                    <span
-                      className="inline-flex items-center gap-1 text-red-600"
-                      title={item.error}
-                    >
-                      <AlertCircle size={13} aria-hidden="true" />
-                      Erro no envio
-                    </span>
+                  {item.error && (
+                    <p className="mt-1 text-xs text-red-600">{item.error}</p>
                   )}
                 </div>
 
-                {item.status === 'uploading' && (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-500" />
-                  </div>
-                )}
-
-                {item.status === 'error' && item.error && (
-                  <p className="mt-1 text-xs text-red-600">{item.error}</p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => removeFile(item.id)}
-                disabled={item.status === 'uploading'}
-                aria-label={`Excluir ${item.file.name}`}
-                title={
-                  item.status === 'uploading'
-                    ? 'Aguarde o envio terminar'
-                    : 'Excluir arquivo'
-                }
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Trash2 size={17} aria-hidden="true" />
-              </button>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => void handleRemove(item)}
+                  disabled={isProcessing}
+                  aria-label={`${isUndo ? 'Desfazer exclusão de' : 'Excluir'} ${item.name}`}
+                  title={isUndo ? 'Desfazer exclusão' : 'Excluir arquivo'}
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isUndo ? (
+                    <RotateCcw size={17} aria-hidden="true" />
+                  ) : (
+                    <Trash2 size={17} aria-hidden="true" />
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
   );
 }
 
-export default function FileUploadPreview() {
-  async function uploadFiles(files: File[]) {
-    await new Promise((resolve) => setTimeout(resolve, 1600));
-
-    // Substitua pela sua chamada real. Exemplo:
-    // const formData = new FormData();
-    // files.forEach((file) => formData.append('files', file));
-    // const response = await fetch('/api/upload', { method: 'POST', body: formData });
-    // if (!response.ok) throw new Error('Falha ao enviar os arquivos.');
-  }
-
-  return (
-    <main className="min-h-screen bg-slate-100 p-6 sm:p-10">
-      <FileUpload
-        onFiles={uploadFiles}
-        onRemove={(file) => console.log('Arquivo removido:', file.name)}
-      />
-    </main>
-  );
-}
+export default FileUpload;

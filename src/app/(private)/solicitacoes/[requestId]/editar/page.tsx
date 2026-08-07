@@ -1,13 +1,10 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { ArrowLeft, Pencil, Download, RefreshCw } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
 
-import {
-  ChecklistWizard,
-  ExistingDocument,
-} from '@/components/forms/checklist/ChecklistWizard';
+import { ChecklistWizard } from '@/components/forms/checklist/ChecklistWizard';
 import {
   WizardFormData,
   initialWizardForm,
@@ -17,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { getRequestById, updateRequest } from '@/features/requests/api';
 import {
-  ChecklistType,
   RequestStatus,
   JudicialRequestDetail,
   JudicialRequestDetailType,
@@ -309,13 +305,13 @@ export default function RequestEditPage({
         initialChecklistType={detail.checklistType}
         initialFormData={extractWizardFormData(detail)}
         existingDocuments={detail.documents ?? []}
+        userId={detail.createdByEmail}
         onCancel={() => setIsEditing(false)}
-        onSubmit={async ({
-          checklistType,
-          formData,
-          newFiles,
-          existingDocuments,
-        }) => {
+        onCompleted={() => {
+          setIsEditing(false);
+          setReloadAttempt((current) => current + 1);
+        }}
+        onSubmit={async ({ checklistType, formData, existingDocuments }) => {
           const payload = {
             requestId,
             checklistType,
@@ -325,11 +321,9 @@ export default function RequestEditPage({
 
           const fd = new FormData();
           fd.append('metadata', JSON.stringify(payload));
-          newFiles.forEach((file) => fd.append('files', file));
 
           await updateRequest(requestId, fd);
-          setIsEditing(false);
-          setReloadAttempt((current) => current + 1);
+          return { requestId, userId: detail.createdByEmail };
         }}
       />
     );

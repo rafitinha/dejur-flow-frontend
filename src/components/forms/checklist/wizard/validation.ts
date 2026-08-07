@@ -192,9 +192,9 @@ const step6Schema = z.object({
 });
 
 const step7Schema = z.object({
+  documentCount: z.number().min(1, 'Anexe ao menos um documento.'),
   files: z
     .array(z.instanceof(File))
-    .min(1, 'Anexe ao menos um documento.')
     .refine(
       (files) => files.every((file) => allowedMimeTypes.includes(file.type)),
       'Formato invalido. Use PDF, DOC, DOCX, PNG ou JPG/JPEG.',
@@ -227,8 +227,9 @@ export function createPayloadByStep(params: {
   checklistType: ChecklistType | undefined;
   formData: WizardFormData;
   files: File[];
+  documentCount: number;
 }) {
-  const { checklistType, formData, files } = params;
+  const { checklistType, formData, files, documentCount } = params;
 
   return [
     { type: checklistType },
@@ -268,7 +269,7 @@ export function createPayloadByStep(params: {
     { financialDetails: formData.financialDetails },
     { factsSummary: formData.factsSummary },
     { opinionDetails: formData.opinionDetails },
-    { files },
+    { files, documentCount },
     {},
   ] as const;
 }

@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw';
-const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
+
+const base =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  'http://localhost:8080';
+
 export const handlers = [
   http.get(`${base}/api/v1/requests`, () =>
     HttpResponse.json([
@@ -15,6 +21,13 @@ export const handlers = [
         llmScore: 0.94,
       },
     ]),
+  ),
+  http.delete(
+    `${base}/api/v1/requests/:requestId/documents`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.post(`${base}/api/v1/requests/:requestId/documents`, () =>
+    HttpResponse.json({ documents: [] }, { status: 201 }),
   ),
   http.post(`${base}/api/v1/requests/submit`, () =>
     HttpResponse.json(

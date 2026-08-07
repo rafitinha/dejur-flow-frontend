@@ -1,5 +1,5 @@
 import { WizardFormData } from '@/components/forms/checklist/wizard/types';
-import { ExistingDocument } from '@/components/forms/checklist/ChecklistWizard';
+import type { ExistingDocument } from '@/types/upload';
 import { SET_TIMEOUT_MAX_ALLOWED_INT } from 'node_modules/msw/lib/core/delay.mjs';
 import { cobrancaTitulosSchema } from '@/config/checklistSchemas';
 
@@ -59,6 +59,7 @@ export type RequestOpinion = {
 };
 
 export type RequestDocument = {
+  documentId?: string;
   name?: string;
   type?: string;
   size?: number;

@@ -84,6 +84,7 @@ export function GenericSection({
   );
 }
 
+//REVIEW: REMOVER / Criado ReviewSection.tsx
 export function ReviewSection({
   checklistType,
   attachedFiles,

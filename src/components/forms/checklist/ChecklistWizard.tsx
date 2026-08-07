@@ -1,18 +1,24 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Wizard } from '@/components/ui/Wizard';
 import { ChecklistType } from '@/features/requests/types';
+import {
+  deleteRequestDocuments,
+  uploadRequestDocuments,
+} from '@/services/requestDocuments';
+import type { ExistingDocument, UploadItem } from '@/types/upload';
 import { ChecklistTypeSelector } from './ChecklistTypeSelector';
 import { FileUpload } from './FileUpload';
 import {
   CompanyDebtorSection,
   GenericSection,
-  ReviewSection,
   VariantFieldsSection,
 } from './wizard/StepSections';
+
+import { ReviewSection } from './wizard/ReviewSection';
 import { getZodFieldErrors, stateCodeSet } from './wizard/helpers';
 import { wizardStepDefinitions } from './wizard/stepConfig';
 import { initialWizardForm, wizardSteps, WizardFormData } from './wizard/types';
@@ -20,12 +26,11 @@ import { createPayloadByStep, createSchemasByStep } from './wizard/validation';
 
 export type ChecklistWizardMode = 'create' | 'edit';
 
-export type ExistingDocument = {
-  name?: string;
-  type?: string;
-  size?: number;
-  uploadedAt?: string;
-  downloadUrl?: string;
+export type { ExistingDocument } from '@/types/upload';
+
+export type ChecklistWizardSubmitResult = {
+  requestId?: string;
+  userId?: string;
 };
 
 export type ChecklistWizardSubmitParams = {
@@ -43,8 +48,15 @@ export type ChecklistWizardProps = {
   initialChecklistType?: ChecklistType;
   initialFormData?: Partial<WizardFormData>;
   existingDocuments?: ExistingDocument[];
+  userId?: string;
   onCancel?: () => void;
-  onSubmit?: (params: ChecklistWizardSubmitParams) => Promise<void> | void;
+  onCompleted?: () => void;
+  onSubmit?: (
+    params: ChecklistWizardSubmitParams,
+  ) =>
+    | Promise<ChecklistWizardSubmitResult | void>
+    | ChecklistWizardSubmitResult
+    | void;
 };
 
 function defaultSubmit(params: ChecklistWizardSubmitParams) {
@@ -56,24 +68,36 @@ function defaultSubmit(params: ChecklistWizardSubmitParams) {
   alert('Mock: solicitação submetida como PROCESSING');
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+function createInitialUploadItems(
+  existingDocuments: ExistingDocument[],
+): UploadItem[] {
+  return existingDocuments.map((document, index) => ({
+    id:
+      document.documentId ??
+      `existing-${index}-${document.name ?? 'documento'}`,
+    documentId: document.documentId,
+    name: document.name ?? 'Documento sem nome',
+    type: document.type,
+    size: document.size,
+    uploadedAt: document.uploadedAt,
+    downloadUrl: document.downloadUrl,
+    status: 'existing',
+  }));
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function createFileId(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
+}
+
+function toExistingDocument(item: UploadItem): ExistingDocument {
+  return {
+    documentId: item.documentId,
+    name: item.name,
+    type: item.type,
+    size: item.size,
+    uploadedAt: item.uploadedAt,
+    downloadUrl: item.downloadUrl,
+  };
 }
 
 export function ChecklistWizard(props: ChecklistWizardProps) {
@@ -83,7 +107,9 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     initialChecklistType,
     initialFormData,
     existingDocuments = [],
+    userId,
     onCancel,
+    onCompleted,
     onSubmit = defaultSubmit,
   } = props;
 
@@ -104,7 +130,9 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     ...initialWizardForm,
     ...(initialFormData ?? {}),
   }));
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>(() =>
+    createInitialUploadItems(existingDocuments),
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [invalidStepIndexes, setInvalidStepIndexes] = useState<number[]>([]);
   const [stepHelpMessage, setStepHelpMessage] = useState('');
@@ -129,7 +157,12 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
       const payloadByStep = createPayloadByStep({
         checklistType: selectedChecklistType,
         formData,
-        files: uploadedFiles,
+        files: uploadItems.flatMap((item) =>
+          item.file && item.status !== 'pending_delete' ? [item.file] : [],
+        ),
+        documentCount: uploadItems.filter(
+          (item) => item.status !== 'pending_delete',
+        ).length,
       });
 
       const schemasByStep = createSchemasByStep(
@@ -161,7 +194,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
 
       return false;
     },
-    [selectedChecklistType, formData, uploadedFiles],
+    [selectedChecklistType, formData, uploadItems],
   );
 
   function moveToStep(targetStep: number) {
@@ -204,6 +237,60 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     return true;
   }
 
+  function handleAddFiles(files: File[]) {
+    setUploadItems((currentItems) => {
+      const filesToAdd = files.filter(
+        (file) =>
+          !currentItems.some(
+            (item) =>
+              item.file?.name === file.name &&
+              item.file.size === file.size &&
+              item.file.lastModified === file.lastModified,
+          ),
+      );
+
+      return [
+        ...currentItems,
+        ...filesToAdd.map((file) => ({
+          id: createFileId(file),
+          file,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          status: 'pending_upload' as const,
+        })),
+      ];
+    });
+
+    setFieldErrors((previous) => {
+      const copy = { ...previous };
+      delete copy.files;
+      return copy;
+    });
+  }
+
+  function handleRemoveFile(item: UploadItem) {
+    setUploadItems((currentItems) => {
+      if (item.status === 'pending_delete') {
+        return currentItems.map((currentItem) =>
+          currentItem.id === item.id
+            ? { ...currentItem, status: 'existing', error: undefined }
+            : currentItem,
+        );
+      }
+
+      if (item.status === 'existing') {
+        // TODO: chamar API DELETE na confirmação final.
+        return currentItems.map((currentItem) =>
+          currentItem.id === item.id
+            ? { ...currentItem, status: 'pending_delete', error: undefined }
+            : currentItem,
+        );
+      }
+
+      return currentItems.filter((currentItem) => currentItem.id !== item.id);
+    });
+  }
   async function handleFinalSubmit() {
     if (!selectedChecklistType) {
       setFieldErrors((previous) => ({
@@ -220,26 +307,158 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     setSubmitError(null);
     setSubmitSuccess(null);
 
+    const pendingUploads = uploadItems.filter(
+      (item) => item.status === 'pending_upload' && item.file,
+    );
+    const pendingDeletes = uploadItems.filter(
+      (item) => item.status === 'pending_delete',
+    );
+    const newFiles = pendingUploads.flatMap((item) =>
+      item.file ? [item.file] : [],
+    );
+    const retainedDocuments = uploadItems
+      .filter((item) => item.status === 'existing')
+      .map(toExistingDocument);
+
     try {
-      await onSubmit({
+      const submitResult = await onSubmit({
         mode,
         requestId,
         checklistType: selectedChecklistType,
         formData,
-        newFiles: uploadedFiles,
-        existingDocuments,
+        newFiles,
+        existingDocuments: retainedDocuments,
       });
+
+      const resolvedRequestId = requestId ?? submitResult?.requestId;
+      const resolvedUserId = userId ?? submitResult?.userId;
+      const usesDefaultSubmit = props.onSubmit === undefined;
+
+      if (usesDefaultSubmit) {
+        setUploadItems((currentItems) =>
+          currentItems
+            .filter((item) => item.status !== 'pending_delete')
+            .map((item) =>
+              item.status === 'pending_upload'
+                ? { ...item, status: 'success', error: undefined }
+                : item,
+            ),
+        );
+      } else if (pendingDeletes.length > 0 || pendingUploads.length > 0) {
+        if (!resolvedRequestId || !resolvedUserId) {
+          throw new Error(
+            'A solicitação e o usuário são obrigatórios para processar documentos.',
+          );
+        }
+
+        if (pendingDeletes.length > 0) {
+          const documents = pendingDeletes.flatMap((item) =>
+            item.documentId ? [{ documentId: item.documentId }] : [],
+          );
+
+          if (documents.length !== pendingDeletes.length) {
+            setUploadItems((currentItems) =>
+              currentItems.map((item) =>
+                item.status === 'pending_delete' && !item.documentId
+                  ? {
+                      ...item,
+                      error: 'Documento sem identificador para exclusão.',
+                    }
+                  : item,
+              ),
+            );
+            throw new Error(
+              'Há documentos sem identificador que não podem ser removidos.',
+            );
+          }
+
+          const deletingIds = new Set(pendingDeletes.map((item) => item.id));
+          setUploadItems((currentItems) =>
+            currentItems.map((item) =>
+              deletingIds.has(item.id)
+                ? { ...item, status: 'deleting', error: undefined }
+                : item,
+            ),
+          );
+
+          try {
+            await deleteRequestDocuments({
+              requestId: resolvedRequestId,
+              userId: resolvedUserId,
+              documents,
+            });
+            setUploadItems((currentItems) =>
+              currentItems.filter((item) => !deletingIds.has(item.id)),
+            );
+          } catch (deleteError) {
+            const message =
+              deleteError instanceof Error
+                ? deleteError.message
+                : 'Não foi possível remover os documentos.';
+            setUploadItems((currentItems) =>
+              currentItems.map((item) =>
+                deletingIds.has(item.id)
+                  ? { ...item, status: 'pending_delete', error: message }
+                  : item,
+              ),
+            );
+            throw deleteError;
+          }
+        }
+
+        if (pendingUploads.length > 0) {
+          const uploadingIds = new Set(pendingUploads.map((item) => item.id));
+          setUploadItems((currentItems) =>
+            currentItems.map((item) =>
+              uploadingIds.has(item.id)
+                ? { ...item, status: 'uploading', error: undefined }
+                : item,
+            ),
+          );
+
+          try {
+            await uploadRequestDocuments({
+              requestId: resolvedRequestId,
+              userId: resolvedUserId,
+              files: newFiles,
+            });
+            setUploadItems((currentItems) =>
+              currentItems.map((item) =>
+                uploadingIds.has(item.id)
+                  ? { ...item, status: 'success', error: undefined }
+                  : item,
+              ),
+            );
+          } catch (uploadError) {
+            const message =
+              uploadError instanceof Error
+                ? uploadError.message
+                : 'Não foi possível enviar os documentos.';
+            setUploadItems((currentItems) =>
+              currentItems.map((item) =>
+                uploadingIds.has(item.id)
+                  ? { ...item, status: 'pending_upload', error: message }
+                  : item,
+              ),
+            );
+            throw uploadError;
+          }
+        }
+      }
 
       setSubmitSuccess(
         mode === 'edit'
           ? 'Alterações salvas com sucesso.'
           : 'Solicitação enviada para processamento.',
       );
-    } catch {
+      onCompleted?.();
+    } catch (submitError) {
       setSubmitError(
-        mode === 'edit'
-          ? 'Não foi possível salvar as alterações. Tente novamente.'
-          : 'Não foi possível submeter a solicitação. Tente novamente.',
+        submitError instanceof Error
+          ? submitError.message
+          : mode === 'edit'
+            ? 'Não foi possível salvar as alterações. Tente novamente.'
+            : 'Não foi possível submeter a solicitação. Tente novamente.',
       );
     } finally {
       setIsSubmitting(false);
@@ -269,7 +488,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     setSelectedChecklistType(nextType);
     setActiveStep(0);
     setFormData({ ...initialWizardForm, ...(initialFormData ?? {}) });
-    setUploadedFiles([]);
+    setUploadItems([]);
     setFieldErrors({});
     setInvalidStepIndexes([]);
     setStepHelpMessage('');
@@ -286,7 +505,9 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
         step: activeStep,
         type: selectedChecklistType,
         form: formData,
-        filesCount: uploadedFiles.length,
+        filesCount: uploadItems.filter(
+          (item) => item.status !== 'pending_delete',
+        ).length,
         updatedAt: new Date().toISOString(),
       }),
     );
@@ -296,7 +517,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     activeStep,
     selectedChecklistType,
     formData,
-    uploadedFiles.length,
+    uploadItems,
   ]);
 
   const isEditMode = mode === 'edit';
@@ -419,99 +640,20 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
         )}
 
         {activeStep === 7 && (
-          <div className="space-y-4">
-            {existingDocuments.length > 0 && (
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-sm font-medium text-foreground">
-                  Documentos já anexados
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {existingDocuments.map((doc, index) => (
-                    <li
-                      key={`${doc.name ?? 'documento'}-${index}`}
-                      className="flex flex-col justify-between gap-2 rounded-md border border-border/60 p-3 sm:flex-row sm:items-center"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {doc.name || 'Documento sem nome'}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          {doc.type && <span>{doc.type}</span>}
-                          {doc.size !== undefined && (
-                            <span>{formatFileSize(doc.size)}</span>
-                          )}
-                          {doc.uploadedAt && (
-                            <span>{formatDate(doc.uploadedAt)}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {doc.downloadUrl ? (
-                        <a
-                          href={doc.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary underline-offset-4 hover:underline"
-                        >
-                          Baixar
-                        </a>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Indisponível
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <FileUpload
-              onFiles={async (selectedFiles) => {
-                await new Promise((resolve) => setTimeout(resolve, 800));
-
-                setUploadedFiles((previousFiles) => {
-                  const filesToAdd = selectedFiles.filter(
-                    (selectedFile) =>
-                      !previousFiles.some(
-                        (currentFile) =>
-                          currentFile.name === selectedFile.name &&
-                          currentFile.size === selectedFile.size &&
-                          currentFile.lastModified ===
-                            selectedFile.lastModified,
-                      ),
-                  );
-
-                  return [...previousFiles, ...filesToAdd];
-                });
-
-                setFieldErrors((previous) => {
-                  const copy = { ...previous };
-                  delete copy.files;
-                  return copy;
-                });
-              }}
-              onRemove={(removedFile) => {
-                setUploadedFiles((previousFiles) =>
-                  previousFiles.filter(
-                    (file) =>
-                      !(
-                        file.name === removedFile.name &&
-                        file.size === removedFile.size &&
-                        file.lastModified === removedFile.lastModified
-                      ),
-                  ),
-                );
-              }}
-              error={fieldErrors.files}
-            />
-          </div>
+          <FileUpload
+            items={uploadItems}
+            onAdd={handleAddFiles}
+            onRemove={handleRemoveFile}
+            error={fieldErrors.files}
+          />
         )}
 
         {activeStep === 8 && (
           <ReviewSection
             checklistType={selectedChecklistType}
-            attachedFiles={uploadedFiles}
+            attachedFiles={uploadItems.flatMap((item) =>
+              item.file && item.status !== 'pending_delete' ? [item.file] : [],
+            )}
             formData={formData}
           />
         )}
