@@ -13,7 +13,10 @@ const cnpjSchema = z
 const requiredText = (message: string, min = 1) => z.string().min(min, message);
 const numericText = (message: string) => z.string().regex(/^\d+$/, message);
 const moneyText = (message: string) =>
-  z.string().regex(/^\d+(,\d{1,2})?$/, message);
+  z
+    .string()
+    .regex(/^\d{1,3}(\.\d{3})*(,\d{1,2})?$/, message)
+    .transform((value) => Number(value.replace(/\./g, '').replace(',', '.')));
 
 export const step0Schema = z.object({
   type: z.enum(checklistTypes, { message: 'Selecione o tipo de checklist.' }),

@@ -27,11 +27,28 @@ export function toDigits(value: string) {
   return value.replace(/\D/g, '');
 }
 
-export function toMoneyMask(value: string) {
+export function toMoneyMask__(value: string) {
   const normalized = value.replace(/[^\d,]/g, '');
   const [integer, decimal] = normalized.split(',');
   if (!decimal) return integer;
   return `${integer},${decimal.slice(0, 2)}`;
+}
+
+export function toMoneyMask(value: string): string {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  const padded = digits.padStart(3, '0');
+
+  const integerPart = padded.slice(0, -2);
+  const decimalPart = padded.slice(-2);
+
+  const formattedInteger = Number(integerPart).toLocaleString('pt-BR');
+
+  return `${formattedInteger},${decimalPart}`;
 }
 
 export function normalizeText(value: string) {
