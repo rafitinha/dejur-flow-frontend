@@ -60,16 +60,16 @@ function extractWizardFormData(
   detail: JudicialRequestDetail | JudicialRequestDetailType,
 ): Partial<WizardFormData> {
   const fromFormData = (detail as JudicialRequestDetailType).formData;
-
-  const result: Partial<WizardFormData> = {};
-
-  //companyLegalName
-
-  result['companyLegalName'] = (detail as JudicialRequestDetail).company.name;
+  const result: Record<string, string | boolean> = {
+    companyLegalName: (detail as JudicialRequestDetail).company.name,
+  };
 
   for (const key of wizardFormKeys) {
     const valueFromFormData = fromFormData?.[key];
-    if (typeof valueFromFormData === 'string') {
+    if (
+      typeof valueFromFormData === 'string' ||
+      typeof valueFromFormData === 'boolean'
+    ) {
       result[key] = valueFromFormData;
       continue;
     }
@@ -77,15 +77,16 @@ function extractWizardFormData(
     const valueFromDetail = (detail as unknown as Record<string, unknown>)[
       key as string
     ];
-    if (typeof valueFromDetail === 'string') {
+    if (
+      typeof valueFromDetail === 'string' ||
+      typeof valueFromDetail === 'boolean'
+    ) {
       result[key] = valueFromDetail;
     }
   }
 
   const wizard = mapRequestDetailToWizardForm(detail as JudicialRequestDetail);
-
-  // return result;
-  return wizard;
+  return { ...result, ...wizard } as Partial<WizardFormData>;
 }
 
 export function mapRequestDetailToWizardForm(
@@ -105,6 +106,8 @@ export function mapRequestDetailToWizardForm(
     // Não existem no novo DTO
     debtorAddress: '',
     addressConfirmedBy: '',
+    addressConfirmedByRole: '',
+    addressConfirmedByDate: '',
 
     // RV
     rvP13: '',
@@ -123,7 +126,7 @@ export function mapRequestDetailToWizardForm(
     // Multa contratual
     mcContractType: '',
     mcBreachedClause: '',
-    mcFirstCycleFinished: '',
+    mcFirstCycleFinished: false,
     mcMaxDiscount: '',
 
     // Tentativas de acordo
@@ -138,6 +141,9 @@ export function mapRequestDetailToWizardForm(
       `Valor: ${detail.financial.amount} ${detail.financial.currency}`,
       `Vencimento: ${detail.financial.dueDate}`,
     ].join('\n'),
+    financialValue: detail.financial.amount.toString(),
+    financialIndex: '',
+    financialUpdatedDate: detail.financial.dueDate,
 
     // Fatos
     factsSummary: [

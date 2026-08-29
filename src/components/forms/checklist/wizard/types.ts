@@ -27,6 +27,8 @@ export type WizardFormData = {
   debtorCnpj: string;
   debtorAddress: string;
   addressConfirmedBy: string;
+  addressConfirmedByRole: string;
+  addressConfirmedByDate: string;
   rvP13: string;
   rvP20: string;
   rvP45: string;
@@ -39,10 +41,13 @@ export type WizardFormData = {
   ctOtherGuarantees: string;
   mcContractType: string;
   mcBreachedClause: string;
-  mcFirstCycleFinished: string;
+  mcFirstCycleFinished: boolean;
   mcMaxDiscount: string;
   agreementDetails: string;
   financialDetails: string;
+  financialValue: string;
+  financialIndex: string;
+  financialUpdatedDate: string;
   factsSummary: string;
   opinionDetails: string;
 };
@@ -56,6 +61,8 @@ export const initialWizardForm: WizardFormData = {
   debtorCnpj: '',
   debtorAddress: '',
   addressConfirmedBy: '',
+  addressConfirmedByRole: '',
+  addressConfirmedByDate: '',
   rvP13: '',
   rvP20: '',
   rvP45: '',
@@ -68,10 +75,13 @@ export const initialWizardForm: WizardFormData = {
   ctOtherGuarantees: '',
   mcContractType: '',
   mcBreachedClause: '',
-  mcFirstCycleFinished: '',
+  mcFirstCycleFinished: false,
   mcMaxDiscount: '',
   agreementDetails: '',
   financialDetails: '',
+  financialValue: '',
+  financialIndex: '',
+  financialUpdatedDate: '',
   factsSummary: '',
   opinionDetails: '',
 };
@@ -93,7 +103,14 @@ export type Step2VariantStrategy = {
     inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
     parser?: ParserType;
 
-    type?: 'input' | 'select' | 'radio';
+    type?:
+      | 'input'
+      | 'select'
+      | 'radio'
+      | 'textarea'
+      | 'date'
+      | 'boolean'
+      | 'combobox';
 
     options?: Array<{
       label: string;

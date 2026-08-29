@@ -136,12 +136,19 @@ function getSpecificDataSections(
       titleNumber?: string;
       guarantor?: string;
       otherGuarantees?: string;
+      confirmationRole?: string;
+      confirmationDate?: string;
     };
     addSection(sections, 'DADOS ESPECÍFICOS', [
       { label: 'Tipo do título', value: renderValue(data.titleType) },
       { label: 'Número do título', value: renderValue(data.titleNumber) },
       { label: 'Garantidor', value: renderValue(data.guarantor) },
       { label: 'Outras garantias', value: renderValue(data.otherGuarantees) },
+      { label: 'Cargo', value: renderValue(data.confirmationRole) },
+      {
+        label: 'Data da confirmação',
+        value: renderValue(data.confirmationDate),
+      },
     ]);
   }
 
@@ -152,8 +159,13 @@ function getSpecificDataSections(
     const data = request.data.data as {
       contractType?: string;
       breachedClause?: string;
-      firstCycleFinished?: string;
+      firstCycleFinished?: boolean | string;
       maxDiscount?: string;
+      confirmationRole?: string;
+      confirmationDate?: string;
+      value?: string;
+      index?: string;
+      updatedAt?: string;
     };
     addSection(sections, 'DADOS ESPECÍFICOS', [
       { label: 'Tipo do contrato', value: renderValue(data.contractType) },
@@ -163,6 +175,14 @@ function getSpecificDataSections(
         value: renderValue(data.firstCycleFinished),
       },
       { label: 'Desconto máximo', value: renderValue(data.maxDiscount) },
+      { label: 'Cargo', value: renderValue(data.confirmationRole) },
+      {
+        label: 'Data da confirmação',
+        value: renderValue(data.confirmationDate),
+      },
+      { label: 'Valor', value: renderValue(data.value) },
+      { label: 'Índice', value: renderValue(data.index) },
+      { label: 'Data de atualização', value: renderValue(data.updatedAt) },
     ]);
   }
 
@@ -195,6 +215,18 @@ export function buildRequestReviewSections(request: JudicialRequestDetail) {
     { label: 'CNPJ', value: formatCnpj(request.debtor?.cnpj || '') },
     { label: 'UF', value: request.debtor?.uf || '' },
     { label: 'Cidade', value: request.debtor?.city || '' },
+    {
+      label: 'Cargo',
+      value:
+        (request.data?.data as { confirmationRole?: string })
+          ?.confirmationRole || '',
+    },
+    {
+      label: 'Data da confirmação',
+      value:
+        (request.data?.data as { confirmationDate?: string })
+          ?.confirmationDate || '',
+    },
   ]);
 
   addSection(sections, 'DADOS FINANCEIROS', [

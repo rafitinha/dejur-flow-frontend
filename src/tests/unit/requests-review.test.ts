@@ -65,6 +65,38 @@ describe('clipboard formatting', () => {
     expect(text).not.toContain('[object Object]');
   });
 
+  it('inclui campos separados de confirmação e valores atualizados', () => {
+    const request: JudicialRequestDetail = {
+      ...baseRequest,
+      checklistType: 'COBRANCA_MULTA_CONTRATUAL',
+      data: {
+        checklistType: 'COBRANCA_MULTA_CONTRATUAL',
+        data: {
+          contractType: 'Prestação de serviços',
+          breachedClause: 'Cláusula de inadimplência',
+          firstCycleFinished: true,
+          maxDiscount: '1500',
+          confirmationRole: 'Diretor',
+          confirmationDate: '2026-08-15',
+          value: '25000,00',
+          index: 'INPC',
+          updatedAt: '2026-08-15',
+        },
+      },
+    };
+
+    const text = formatRequestDetailsForClipboard(request);
+
+    expect(text).toContain('Cargo');
+    expect(text).toContain('Diretor');
+    expect(text).toContain('Data da confirmação');
+    expect(text).toContain('2026-08-15');
+    expect(text).toContain('Valor');
+    expect(text).toContain('INPC');
+    expect(text).toContain('Primeiro ciclo finalizado');
+    expect(text).toContain('Sim');
+  });
+
   it('retorna suporte não disponível quando a clipboard não existe', async () => {
     const originalClipboard = navigator.clipboard;
     Object.defineProperty(navigator, 'clipboard', {

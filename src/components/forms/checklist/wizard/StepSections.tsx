@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { RadioGroup } from '@/components/ui/Radio';
 import { Textarea } from '@/components/ui/Textarea';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { Combobox } from '@/components/ui/Combobox';
+import { Switch } from '@/components/ui/Switch';
 import { ChecklistType } from '@/features/requests/types';
 import { cn } from '@/lib/utils/cn';
 import {
@@ -25,14 +28,16 @@ export function FieldWrapper({
   required,
   error,
   children,
+  className,
 }: {
   label: string;
   required?: boolean;
   error?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-1">
+    <div className={cn('space-y-1', className)}>
       <label className="text-sm font-medium text-foreground">
         {label} {required && <span className="text-danger">*</span>}
       </label>
@@ -66,6 +71,7 @@ export function GenericSection({
       </h2>
       {textarea ? (
         <Textarea
+          className="w-full"
           placeholder={placeholder}
           value={value}
           status={error ? 'error' : 'default'}
@@ -108,6 +114,31 @@ export function ReviewSection({
     </div>
   );
 }
+
+const confirmationRoleOptions = [
+  { label: 'Diretor', value: 'Diretor' },
+  { label: 'Gerente', value: 'Gerente' },
+  { label: 'Analista', value: 'Analista' },
+  { label: 'Coordenador', value: 'Coordenador' },
+  { label: 'Supervisor', value: 'Supervisor' },
+  { label: 'Responsável Técnico', value: 'Responsável Técnico' },
+  { label: 'Advogado', value: 'Advogado' },
+  { label: 'Administrador', value: 'Administrador' },
+  { label: 'Consultor', value: 'Consultor' },
+];
+
+const financialIndexOptions = [
+  'INPC',
+  'IPCA',
+  'IGPM',
+  'TR',
+  'Selic',
+  'CETIP',
+  'TJLP',
+  'CDI',
+  'IGP-M',
+  'Taxa de Juros',
+];
 
 export function CompanyDebtorSection({
   formData,
@@ -460,7 +491,7 @@ export function CompanyDebtorSection({
       </FieldWrapper>
 
       <FieldWrapper
-        label="Confirmado por / cargo / data"
+        label="Confirmado por"
         required
         error={errors.addressConfirmedBy}
       >
@@ -470,7 +501,35 @@ export function CompanyDebtorSection({
             updateField('addressConfirmedBy', event.target.value)
           }
           status={errors.addressConfirmedBy ? 'error' : 'default'}
-          placeholder="Ex.: Maria Souza - Analista - 24/07/2026"
+          placeholder="Ex.: Maria Souza"
+        />
+      </FieldWrapper>
+
+      <FieldWrapper
+        label="Cargo"
+        required
+        error={errors.addressConfirmedByRole}
+      >
+        <Select
+          value={formData.addressConfirmedByRole}
+          onValueChange={(value) =>
+            updateField('addressConfirmedByRole', value)
+          }
+          placeholder="Selecione o cargo"
+          options={confirmationRoleOptions}
+          status={errors.addressConfirmedByRole ? 'error' : 'default'}
+        />
+      </FieldWrapper>
+
+      <FieldWrapper
+        label="Data da confirmação"
+        required
+        error={errors.addressConfirmedByDate}
+      >
+        <DatePicker
+          value={formData.addressConfirmedByDate}
+          onChange={(value) => updateField('addressConfirmedByDate', value)}
+          placeholder="Selecione a data"
         />
       </FieldWrapper>
     </div>
@@ -523,6 +582,9 @@ export function VariantFieldsSection({
             label={field.label}
             required={field.required}
             error={errors[String(field.key)]}
+            className={
+              field.type === 'textarea' ? 'md:col-span-full' : undefined
+            }
           >
             {field.type === 'select' ? (
               <Select
@@ -530,6 +592,42 @@ export function VariantFieldsSection({
                 onValueChange={(value) => updateField(field.key, value)}
                 placeholder={field.placeholder}
                 options={field.options ?? []}
+              />
+            ) : field.type === 'textarea' ? (
+              <Textarea
+                value={value}
+                onChange={(event) =>
+                  updateField(field.key, parser(event.target.value))
+                }
+                placeholder={field.placeholder}
+                status={errors[String(field.key)] ? 'error' : 'default'}
+              />
+            ) : field.type === 'date' ? (
+              <DatePicker
+                value={String(value ?? '')}
+                onChange={(dateValue) =>
+                  updateField(field.key, dateValue as never)
+                }
+                placeholder={field.placeholder}
+              />
+            ) : field.type === 'boolean' ? (
+              <div className="rounded-md border border-border bg-muted/20 p-3">
+                <Switch
+                  checked={Boolean(value)}
+                  onCheckedChange={(checked) =>
+                    updateField(field.key, checked as never)
+                  }
+                  label={field.placeholder ?? 'Ativo'}
+                />
+              </div>
+            ) : field.type === 'combobox' ? (
+              <Combobox
+                value={String(value ?? '')}
+                onValueChange={(selected) =>
+                  updateField(field.key, selected as never)
+                }
+                options={financialIndexOptions}
+                placeholder={field.placeholder}
               />
             ) : field.type === 'radio' ? (
               <RadioGroup

@@ -14,6 +14,7 @@ import { ChecklistTypeSelector } from './ChecklistTypeSelector';
 import { FileUpload } from './FileUpload';
 import {
   CompanyDebtorSection,
+  FieldWrapper,
   GenericSection,
   VariantFieldsSection,
 } from './wizard/StepSections';
@@ -23,6 +24,23 @@ import { getZodFieldErrors, stateCodeSet } from './wizard/helpers';
 import { wizardStepDefinitions } from './wizard/stepConfig';
 import { initialWizardForm, wizardSteps, WizardFormData } from './wizard/types';
 import { createPayloadByStep, createSchemasByStep } from './wizard/validation';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { Select } from '@/components/ui/Select';
+import { Input } from '@/components/ui/Input';
+import { toMoneyMask } from './wizard/helpers';
+
+const financialIndexOptions = [
+  'INPC',
+  'IPCA',
+  'IGPM',
+  'TR',
+  'Selic',
+  'CETIP',
+  'TJLP',
+  'CDI',
+  'IGP-M',
+  'Taxa de Juros',
+];
 
 export type ChecklistWizardMode = 'create' | 'edit';
 
@@ -597,6 +615,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
           <GenericSection
             title="Tentativas de acordo e cobranca"
             placeholder="Descreva tentativas, meios de contato, responsaveis e resultados."
+            textarea
             required
             error={fieldErrors.agreementDetails}
             value={formData.agreementDetails}
@@ -605,14 +624,100 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
         )}
 
         {activeStep === 4 && (
-          <GenericSection
-            title="Valores, indices e atualizacao"
-            placeholder="Informe indice, juros, multa, termo inicial/final e descontos."
-            required
-            error={fieldErrors.financialDetails}
-            value={formData.financialDetails}
-            onChange={(value) => updateField('financialDetails', value)}
-          />
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-3">
+              <FieldWrapper
+                label="Valor"
+                required
+                error={fieldErrors.financialValue}
+              >
+                <Input
+                  value={formData.financialValue}
+                  onChange={(event) => {
+                    const nextValue = toMoneyMask(event.target.value);
+                    updateField('financialValue', nextValue);
+                    updateField(
+                      'financialDetails',
+                      [
+                        nextValue ? `Valor: ${nextValue}` : '',
+                        formData.financialIndex
+                          ? `Índice: ${formData.financialIndex}`
+                          : '',
+                        formData.financialUpdatedDate
+                          ? `Data de atualização: ${formData.financialUpdatedDate}`
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join('\n'),
+                    );
+                  }}
+                  placeholder="Ex.: 12.500,00"
+                  status={fieldErrors.financialValue ? 'error' : 'default'}
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Índice"
+                required
+                error={fieldErrors.financialIndex}
+              >
+                <Select
+                  value={formData.financialIndex}
+                  onValueChange={(value) => {
+                    updateField('financialIndex', value);
+                    updateField(
+                      'financialDetails',
+                      [
+                        formData.financialValue
+                          ? `Valor: ${formData.financialValue}`
+                          : '',
+                        value ? `Índice: ${value}` : '',
+                        formData.financialUpdatedDate
+                          ? `Data de atualização: ${formData.financialUpdatedDate}`
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join('\n'),
+                    );
+                  }}
+                  options={financialIndexOptions.map((option) => ({
+                    label: option,
+                    value: option,
+                  }))}
+                  placeholder="Selecione"
+                  status={fieldErrors.financialIndex ? 'error' : 'default'}
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Data de Atualização"
+                required
+                error={fieldErrors.financialUpdatedDate}
+              >
+                <DatePicker
+                  value={formData.financialUpdatedDate}
+                  onChange={(value) => {
+                    updateField('financialUpdatedDate', value);
+                    updateField(
+                      'financialDetails',
+                      [
+                        formData.financialValue
+                          ? `Valor: ${formData.financialValue}`
+                          : '',
+                        formData.financialIndex
+                          ? `Índice: ${formData.financialIndex}`
+                          : '',
+                        value ? `Data de atualização: ${value}` : '',
+                      ]
+                        .filter(Boolean)
+                        .join('\n'),
+                    );
+                  }}
+                  placeholder="Selecione a data"
+                />
+              </FieldWrapper>
+            </div>
+          </div>
         )}
 
         {activeStep === 5 && (

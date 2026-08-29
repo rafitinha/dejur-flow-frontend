@@ -71,6 +71,13 @@ export function ReviewSection({
             label="Confirmado por"
             value={formData.addressConfirmedBy}
           />
+
+          <ReviewField label="Cargo" value={formData.addressConfirmedByRole} />
+
+          <ReviewField
+            label="Data da confirmação"
+            value={formData.addressConfirmedByDate}
+          />
         </div>
       </section>
 
@@ -81,13 +88,19 @@ export function ReviewSection({
 
           <div className="grid gap-3 md:grid-cols-2">
             {strategy.fields.map((field) => {
-              const value = formData[field.key] ?? '-';
+              const value = formData[field.key];
+              const stringValue =
+                typeof value === 'boolean'
+                  ? value
+                    ? 'Sim'
+                    : 'Não'
+                  : String(value || '-');
 
               return (
                 <ReviewField
                   key={String(field.key)}
                   label={field.label}
-                  value={String(value || '-')}
+                  value={stringValue}
                 />
               );
             })}
@@ -104,7 +117,18 @@ export function ReviewSection({
       {/* Financeiro */}
       <ReviewTextSection
         title="Valores, Índices e Atualização"
-        value={formData.financialDetails}
+        value={
+          [
+            formData.financialValue ? `Valor: ${formData.financialValue}` : '',
+            formData.financialIndex ? `Índice: ${formData.financialIndex}` : '',
+            formData.financialUpdatedDate
+              ? `Data de atualização: ${formData.financialUpdatedDate}`
+              : '',
+            formData.financialDetails,
+          ]
+            .filter(Boolean)
+            .join('\n') || undefined
+        }
       />
 
       {/* Fatos */}

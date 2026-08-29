@@ -17,6 +17,11 @@ const moneyText = (message: string) =>
     .string()
     .regex(/^\d{1,3}(\.\d{3})*(,\d{1,2})?$/, message)
     .transform((value) => Number(value.replace(/\./g, '').replace(',', '.')));
+const dateText = (message: string) =>
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, message)
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), message);
 
 export const step0Schema = z.object({
   type: z.enum(checklistTypes, { message: 'Selecione o tipo de checklist.' }),
@@ -36,6 +41,11 @@ export function createStep1Schema(stateCodeSet: Set<string>) {
       debtorCnpj: cnpjSchema,
       debtorAddress: requiredText('Endereco completo obrigatorio.', 5),
       addressConfirmedBy: requiredText('Informe quem confirmou o endereco.', 3),
+      addressConfirmedByRole: requiredText(
+        'Informe o cargo do responsável.',
+        2,
+      ),
+      addressConfirmedByDate: dateText('Informe a data da confirmacao.'),
     })
     .refine((data) => data.companyCnpj !== data.debtorCnpj, {
       message: 'O CNPJ da empresa nao pode ser igual ao CNPJ da devedora.',
@@ -62,7 +72,9 @@ const step2TitlesSchema = z.object({
 const step2PenaltySchema = z.object({
   mcContractType: requiredText('Tipo de contrato obrigatorio.', 3),
   mcBreachedClause: requiredText('Clausula descumprida obrigatoria.', 5),
-  mcFirstCycleFinished: requiredText('Informe SIM ou NAO.', 1),
+  mcFirstCycleFinished: z.boolean({
+    message: 'Selecione se o primeiro ciclo foi finalizado.',
+  }),
   mcMaxDiscount: moneyText('Valor invalido.'),
 });
 
@@ -109,6 +121,7 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
         key: 'rvRefusalReason',
         label: 'Motivo da recusa',
         required: true,
+        type: 'textarea',
       },
     ],
   },
@@ -128,6 +141,7 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
         key: 'ctOtherGuarantees',
         label: 'Outras garantias',
         required: true,
+        type: 'textarea',
       },
     ],
   },
@@ -139,18 +153,14 @@ export const step2Strategies: Record<ChecklistType, Step2VariantStrategy> = {
         key: 'mcBreachedClause',
         label: 'Clausula descumprida',
         required: true,
+        type: 'textarea',
       },
       {
         key: 'mcFirstCycleFinished',
         label: 'Primeiro ciclo finalizado?',
         required: true,
-        placeholder: 'SIM ou NAO',
-        type: 'radio',
-        options: [
-          { label: 'YES', value: 'Sim' },
-          { label: 'NO', value: 'Não' },
-        ],
-        parser: 'toUpperCase',
+        placeholder: 'Selecione o status',
+        type: 'boolean',
       },
       {
         key: 'mcMaxDiscount',
@@ -180,10 +190,9 @@ const step3Schema = z.object({
 });
 
 const step4Schema = z.object({
-  financialDetails: requiredText(
-    'Informe valores, indices e atualizacao de forma completa.',
-    15,
-  ),
+  financialValue: moneyText('Valor invalido.'),
+  financialIndex: requiredText('Selecione o índice.', 2),
+  financialUpdatedDate: dateText('Informe a data de atualização.'),
 });
 
 const step5Schema = z.object({
@@ -245,6 +254,8 @@ export function createPayloadByStep(params: {
       debtorCnpj: formData.debtorCnpj,
       debtorAddress: formData.debtorAddress,
       addressConfirmedBy: formData.addressConfirmedBy,
+      addressConfirmedByRole: formData.addressConfirmedByRole,
+      addressConfirmedByDate: formData.addressConfirmedByDate,
     },
     checklistType === 'RECUPERACAO_VASILHAMES'
       ? {
@@ -269,7 +280,11 @@ export function createPayloadByStep(params: {
             mcMaxDiscount: formData.mcMaxDiscount,
           },
     { agreementDetails: formData.agreementDetails },
-    { financialDetails: formData.financialDetails },
+    {
+      financialValue: formData.financialValue,
+      financialIndex: formData.financialIndex,
+      financialUpdatedDate: formData.financialUpdatedDate,
+    },
     { factsSummary: formData.factsSummary },
     { opinionDetails: formData.opinionDetails },
     { files, documentCount },

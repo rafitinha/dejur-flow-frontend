@@ -76,6 +76,8 @@ export type RequestSpecificData =
         historicalAmount?: string;
         updatedAmount?: string;
         reason?: string;
+        confirmationRole?: string;
+        confirmationDate?: string;
       };
     }
   | {
@@ -85,6 +87,8 @@ export type RequestSpecificData =
         titleNumber?: string;
         guarantor?: string;
         otherGuarantees?: string;
+        confirmationRole?: string;
+        confirmationDate?: string;
       };
     }
   | {
@@ -92,8 +96,13 @@ export type RequestSpecificData =
       data: {
         contractType?: string;
         breachedClause?: string;
-        firstCycleFinished?: string;
+        firstCycleFinished?: boolean | string;
         maxDiscount?: string;
+        confirmationRole?: string;
+        confirmationDate?: string;
+        value?: string;
+        index?: string;
+        updatedAt?: string;
       };
     };
 
