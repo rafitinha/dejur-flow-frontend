@@ -1,4 +1,5 @@
-﻿import { JudicialRequestListItem } from './types';
+﻿import { JudicialRequestDetail, JudicialRequestListItem } from './types';
+import { REQUESTS_API_ROUTES } from './routes';
 
 const baseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -108,13 +109,74 @@ export async function listApprovedRequests(
   return body as PaginatedResponse<JudicialRequestListItem>;
 }
 
-export async function getRequestById(requestId: string, accessToken?: string) {
-  const r = await fetch(`${baseUrl}/api/v1/requests/${requestId}`, {
+export async function getRequestById(
+  requestId: string,
+  accessToken?: string,
+): Promise<JudicialRequestDetail> {
+  const endpoint = `${baseUrl}${REQUESTS_API_ROUTES.byId(requestId)}`;
+  const r = await fetch(endpoint, {
     cache: 'no-store',
     headers: buildHeaders(accessToken),
   });
-  if (!r.ok) throw new Error('Erro ao consultar detalhes da solicitaÃ§Ã£o');
-  return r.json();
+  if (!r.ok) throw new Error('Erro ao consultar detalhes da solicitação');
+  return r.json() as Promise<JudicialRequestDetail>;
+}
+
+export async function exportRequestPdf(
+  requestId: string,
+  accessToken?: string,
+) {
+  const endpoint = `${baseUrl}${REQUESTS_API_ROUTES.exportPdf(requestId)}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+  if (!r.ok) throw new Error('Não foi possível gerar o arquivo PDF.');
+  return r.blob();
+}
+
+export async function exportRequestCsv(
+  requestId: string,
+  accessToken?: string,
+) {
+  const endpoint = `${baseUrl}${REQUESTS_API_ROUTES.exportCsv(requestId)}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+  if (!r.ok) throw new Error('Não foi possível gerar o arquivo CSV.');
+  return r.blob();
+}
+
+export async function exportRequestExcel(
+  requestId: string,
+  accessToken?: string,
+) {
+  const endpoint = `${baseUrl}${REQUESTS_API_ROUTES.exportExcel(requestId)}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+  if (!r.ok) throw new Error('Não foi possível gerar o arquivo Excel.');
+  return r.blob();
+}
+
+export async function downloadRequestDocument(
+  requestId: string,
+  documentId: string,
+  accessToken?: string,
+) {
+  if (!requestId || !documentId) {
+    throw new Error('Parâmetros inválidos para o download do documento.');
+  }
+
+  const endpoint = `${baseUrl}${REQUESTS_API_ROUTES.downloadDocument(requestId, documentId)}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+  if (!r.ok) throw new Error('Não foi possível baixar o documento.');
+  return r.blob();
 }
 
 export async function submitRequest(formData: FormData, accessToken?: string) {

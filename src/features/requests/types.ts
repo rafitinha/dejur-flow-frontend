@@ -1,7 +1,5 @@
 import { WizardFormData } from '@/components/forms/checklist/wizard/types';
 import type { ExistingDocument } from '@/types/upload';
-import { SET_TIMEOUT_MAX_ALLOWED_INT } from 'node_modules/msw/lib/core/delay.mjs';
-import { cobrancaTitulosSchema } from '@/config/checklistSchemas';
 
 export type ChecklistType =
   'RECUPERACAO_VASILHAMES' | 'COBRANCA_TITULOS' | 'COBRANCA_MULTA_CONTRATUAL';
@@ -56,6 +54,7 @@ export type AgreementAttempt = {
 
 export type RequestOpinion = {
   recommendedAction: string;
+  details?: string;
 };
 
 export type RequestDocument = {
@@ -69,31 +68,32 @@ export type RequestDocument = {
 
 export type RequestSpecificData =
   | {
-      checklistType: 'CYLINDER_RECOVERY';
+      checklistType: 'RECUPERACAO_VASILHAMES';
       data: {
-        p13Quantity: number;
-        p20Quantity: number;
-        p45Quantity: number;
-        historicalAmount: string;
-        updatedAmount: string;
+        p13Quantity?: number;
+        p20Quantity?: number;
+        p45Quantity?: number;
+        historicalAmount?: string;
+        updatedAmount?: string;
+        reason?: string;
       };
     }
   | {
-      checklistType: 'TITLE_COLLECTION';
+      checklistType: 'COBRANCA_TITULOS';
       data: {
-        titleType: string;
-        titleNumber: string;
-        guarantor: string;
-        otherGuarantees: string;
+        titleType?: string;
+        titleNumber?: string;
+        guarantor?: string;
+        otherGuarantees?: string;
       };
     }
   | {
-      checklistType: 'CONTRACT_PENALTY_COLLECTION';
+      checklistType: 'COBRANCA_MULTA_CONTRATUAL';
       data: {
-        contractType: string;
-        breachedClause: string;
-        firstCycleFinished: string;
-        maxDiscount: string;
+        contractType?: string;
+        breachedClause?: string;
+        firstCycleFinished?: string;
+        maxDiscount?: string;
       };
     };
 
@@ -106,6 +106,9 @@ export type JudicialRequestDetail = {
     name: string;
     email: string;
   };
+
+  createdAt?: string;
+  updatedAt?: string;
 
   company: RequestCompany;
   debtor: RequestDebtor;
