@@ -27,7 +27,6 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/solicitacoes/nova', label: 'Nova solicitação', icon: FilePlus },
   { href: '/solicitacoes', label: 'Solicitações', icon: Files },
-  { href: '/admin/aprovadas', label: 'Aprovações DEJUR', icon: Sparkles },
   { href: '/notificacoes', label: 'Notificações', icon: Bell },
 ];
 

@@ -21,18 +21,6 @@ export function Navbar() {
           </button>
           <AppLogo />
           <div>
-            <p
-              className="text-label
-                  bg-gradient-to-r
-                  from-[#F23859]
-                  via-[#F9474E]
-                  to-[#FD4F48]
-                  bg-clip-text
-                  text-transparent
-                "
-            >
-              GEQ
-            </p>
             <h1 className="text-lg font-semibold">Validador Judicial</h1>
           </div>
         </div>

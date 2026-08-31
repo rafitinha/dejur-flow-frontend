@@ -14,8 +14,6 @@ const items = [
   ['/dashboard', 'Dashboard', LayoutDashboard],
   ['/solicitacoes/nova', 'Nova solicitação', FilePlus],
   ['/solicitacoes', 'Solicitações', Files],
-  ['/admin/aprovadas', 'Aprovações DEJUR', Sparkles],
-  ['/notificacoes', 'Notificações', Bell],
 ] as const;
 
 export function Sidebar() {

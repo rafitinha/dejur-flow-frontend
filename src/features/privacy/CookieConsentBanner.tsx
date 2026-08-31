@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cookie, ShieldCheck, Settings, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
+
 import {
   getDefaultPreferences,
   loadStoredConsent,
   saveConsent,
   shouldShowConsentBanner,
 } from './consent-storage';
+
 import type { ConsentPreferences, CookieCategory } from './types';
 
 const COOKIE_DESCRIPTIONS: Array<{
@@ -40,22 +42,36 @@ const COOKIE_DESCRIPTIONS: Array<{
 
 export function CookieConsentBanner() {
   const pathname = usePathname();
-  const [open, setOpen] = useState<boolean>(() => {
-    const stored = loadStoredConsent();
-    return shouldShowConsentBanner(stored);
-  });
+
+  const [mounted, setMounted] = useState(false);
+
+  const [open, setOpen] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [preferences, setPreferences] = useState<ConsentPreferences>(() => {
+
+  const [preferences, setPreferences] = useState<ConsentPreferences>(
+    getDefaultPreferences(),
+  );
+
+  useEffect(() => {
     const stored = loadStoredConsent();
-    return stored?.preferences ?? getDefaultPreferences();
-  });
+
+    setPreferences(stored?.preferences ?? getDefaultPreferences());
+
+    setOpen(shouldShowConsentBanner(stored));
+
+    setMounted(true);
+  }, []);
 
   const isEntryScreen = pathname === '/' || pathname === '/login';
 
-  if (!isEntryScreen) return null;
+  if (!mounted || !isEntryScreen) {
+    return null;
+  }
 
   function persistPreferences(nextPreferences: ConsentPreferences) {
     saveConsent(nextPreferences);
+
     setPreferences(nextPreferences);
     setIsModalOpen(false);
     setOpen(false);
@@ -100,7 +116,9 @@ export function CookieConsentBanner() {
     }));
   }
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
     <>
@@ -128,6 +146,7 @@ export function CookieConsentBanner() {
                 <div className="flex size-10 items-center justify-center rounded-full bg-muted text-primary">
                   <Cookie aria-hidden="true" className="size-5" />
                 </div>
+
                 <button
                   type="button"
                   aria-label="Configurar cookies"
@@ -138,11 +157,13 @@ export function CookieConsentBanner() {
                   <Settings aria-hidden="true" className="size-4" />
                 </button>
               </div>
+
               <div className="space-y-2">
                 <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <ShieldCheck aria-hidden="true" className="size-4" />
                   Privacidade e cookies
                 </p>
+
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                   Utilizamos cookies necessários para o funcionamento do site.
                   Com sua autorização, também podemos utilizar categorias
@@ -159,6 +180,7 @@ export function CookieConsentBanner() {
               >
                 Rejeitar opcionais
               </button>
+
               <button
                 type="button"
                 onClick={handleAcceptAll}
@@ -177,11 +199,13 @@ export function CookieConsentBanner() {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-title">Preferências de cookies</h2>
+
                 <p className="mt-1 text-body text-muted-foreground">
                   Escolha quais categorias de cookies você aceita para
                   personalizar a sua experiência.
                 </p>
               </div>
+
               <button
                 type="button"
                 aria-label="Fechar preferências de cookies"
@@ -197,10 +221,12 @@ export function CookieConsentBanner() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-foreground">Essenciais</p>
+
                     <p className="text-sm text-muted-foreground">
                       Sempre ativos para o funcionamento do portal.
                     </p>
                   </div>
+
                   <Checkbox
                     checked={preferences.necessary}
                     onCheckedChange={() => undefined}
@@ -220,10 +246,12 @@ export function CookieConsentBanner() {
                       <p className="font-medium text-foreground">
                         {item.title}
                       </p>
+
                       <p className="mt-1 text-sm text-muted-foreground">
                         {item.description}
                       </p>
                     </div>
+
                     <Checkbox
                       checked={preferences[item.key]}
                       onCheckedChange={(checked) =>
@@ -243,6 +271,7 @@ export function CookieConsentBanner() {
                 >
                   Cancelar
                 </button>
+
                 <button
                   type="button"
                   onClick={handleSavePreferences}

@@ -10,6 +10,8 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 
+import { CookieConsentBanner } from '@/features/privacy/CookieConsentBanner';
+
 export default function HomePage() {
   return (
     <main className="min-h-screen px-6 py-16 md:px-8">
@@ -63,6 +65,7 @@ export default function HomePage() {
           </div>
         </Card>
       </section>
+      <CookieConsentBanner />
     </main>
   );
 }
