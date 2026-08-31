@@ -44,7 +44,7 @@ export default function NotFound() {
                 className={buttonVariants({ variant: 'outline', size: 'md' })}
               >
                 <ClipboardList aria-hidden="true" className="size-4" />
-                Minhas solicitações
+                Solicitações
               </Link>
             </div>
           </CardContent>

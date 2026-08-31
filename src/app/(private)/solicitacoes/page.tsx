@@ -341,7 +341,7 @@ export default function RequestsPage() {
     <section className="space-y-4">
       <div>
         <p className="text-label">Operações</p>
-        <h1 className="text-heading">Minhas solicitações</h1>
+        <h1 className="text-heading">Solicitações</h1>
       </div>
 
       <Card>
