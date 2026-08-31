@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Cookie, ShieldCheck, Settings, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -43,29 +43,23 @@ const COOKIE_DESCRIPTIONS: Array<{
 export function CookieConsentBanner() {
   const pathname = usePathname();
 
-  const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(() => {
+    const stored = loadStoredConsent();
 
-  const [open, setOpen] = useState(false);
+    return shouldShowConsentBanner(stored);
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [preferences, setPreferences] = useState<ConsentPreferences>(
-    getDefaultPreferences(),
-  );
-
-  useEffect(() => {
+  const [preferences, setPreferences] = useState<ConsentPreferences>(() => {
     const stored = loadStoredConsent();
 
-    setPreferences(stored?.preferences ?? getDefaultPreferences());
-
-    setOpen(shouldShowConsentBanner(stored));
-
-    setMounted(true);
-  }, []);
+    return stored?.preferences ?? getDefaultPreferences();
+  });
 
   const isEntryScreen = pathname === '/' || pathname === '/login';
 
-  if (!mounted || !isEntryScreen) {
+  if (!isEntryScreen || !open) {
     return null;
   }
 
@@ -114,10 +108,6 @@ export function CookieConsentBanner() {
       ...current,
       [category]: value,
     }));
-  }
-
-  if (!open) {
-    return null;
   }
 
   return (

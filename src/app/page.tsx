@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 
-import { CookieConsentBanner } from '@/features/privacy/CookieConsentBanner';
+import { CookieConsentClient } from '@/features/privacy/CookieConsentClient';
 
 export default function HomePage() {
   return (
@@ -65,7 +65,7 @@ export default function HomePage() {
           </div>
         </Card>
       </section>
-      <CookieConsentBanner />
+      <CookieConsentClient />
     </main>
   );
 }
