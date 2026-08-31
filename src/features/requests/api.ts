@@ -23,6 +23,7 @@ export type ListMyRequestsFilters = {
   debtorCnpj?: string;
   pageIndex?: number;
   pageSize?: number;
+  limit?: number;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
 };
@@ -49,6 +50,7 @@ export async function listMyRequests(
     query.set('pageIndex', String(filters.pageIndex));
   if (filters.pageSize !== undefined)
     query.set('pageSize', String(filters.pageSize));
+  if (filters.limit !== undefined) query.set('limit', String(filters.limit));
   if (filters.sortBy) query.set('sortBy', filters.sortBy);
   if (filters.sortDirection) query.set('sortDirection', filters.sortDirection);
 
@@ -86,6 +88,7 @@ export async function listApprovedRequests(
     query.set('pageIndex', String(filters.pageIndex));
   if (filters.pageSize !== undefined)
     query.set('pageSize', String(filters.pageSize));
+  if (filters.limit !== undefined) query.set('limit', String(filters.limit));
   if (filters.sortBy) query.set('sortBy', filters.sortBy);
   if (filters.sortDirection) query.set('sortDirection', filters.sortDirection);
 

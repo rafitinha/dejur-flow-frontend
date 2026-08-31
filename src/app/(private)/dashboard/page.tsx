@@ -1,15 +1,20 @@
+'use client';
+
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowRight,
   Brain,
+  Eye,
   FileText,
+  Pencil,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import { MiniBarChart } from '@/components/charts/MiniBarChart';
 import { DashboardMetricGrid } from '@/components/dashboard/cards';
-import { buttonVariants } from '@/components/ui/Button';
+import { RequestDetailsModal } from '@/components/requests/RequestDetailsModal';
+import { Button, buttonVariants } from '@/components/ui/Button';
 import {
   Card,
   CardContent,
@@ -18,22 +23,229 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 import { StatusTag } from '@/components/ui/StatusTag';
+import {
+  downloadRequestDocument,
+  exportRequestCsv,
+  exportRequestExcel,
+  exportRequestPdf,
+  getRequestById,
+  listMyRequests,
+} from '@/features/requests/api';
+import {
+  formatRequestDetailsForClipboard,
+  writeTextToClipboard,
+} from '@/features/requests/clipboard';
+import type {
+  JudicialRequestDetail,
+  JudicialRequestListItem,
+  RequestStatus,
+} from '@/features/requests/types';
+import { cn } from '@/lib/utils/cn';
 
-const items = [
-  {
-    id: 'REQ-2026-07-03-000001',
-    tipo: 'Multa Contratual',
-    devedora: 'Empresa Devedora LTDA',
-    status: 'PROCESSING' as const,
-  },
-  {
-    id: 'REQ-2026-07-03-000002',
-    tipo: 'Títulos',
-    devedora: 'Comercial Exemplo ME',
-    status: 'NEEDS_CORRECTION' as const,
-  },
-];
+const canEditStatus = new Set<RequestStatus>(['NEEDS_CORRECTION']);
+
 export default function DashboardPage() {
+  const [items, setItems] = useState<JudicialRequestListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
+    null,
+  );
+  const [selectedRequest, setSelectedRequest] =
+    useState<JudicialRequestDetail | null>(null);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isRequestLoading, setIsRequestLoading] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestExportingFormat, setRequestExportingFormat] = useState<
+    'pdf' | 'csv' | 'excel' | null
+  >(null);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<
+    string | null
+  >(null);
+  const [isCopyingRequest, setIsCopyingRequest] = useState(false);
+  const [hasCopiedRequest, setHasCopiedRequest] = useState(false);
+  const [requestFeedback, setRequestFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const latestRequestRequestRef = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRecentRequests() {
+      setLoading(true);
+
+      try {
+        const data = await listMyRequests({
+          limit: 5,
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        });
+
+        if (!active) return;
+        setItems(data.items);
+      } catch {
+        if (active) {
+          setItems([]);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadRecentRequests();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!requestFeedback) return;
+    const timer = window.setTimeout(() => setRequestFeedback(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [requestFeedback]);
+
+  function resetRequestModalState() {
+    setIsRequestModalOpen(false);
+    setSelectedRequest(null);
+    setSelectedRequestId(null);
+    setRequestError(null);
+    setRequestExportingFormat(null);
+    setDownloadingDocumentId(null);
+    setIsCopyingRequest(false);
+    setHasCopiedRequest(false);
+    setRequestFeedback(null);
+  }
+
+  async function handleViewRequest(requestId: string) {
+    if (!requestId) return;
+
+    const requestSequence = latestRequestRequestRef.current + 1;
+    latestRequestRequestRef.current = requestSequence;
+
+    setSelectedRequestId(requestId);
+    setSelectedRequest(null);
+    setRequestError(null);
+    setHasCopiedRequest(false);
+    setRequestFeedback(null);
+    setIsRequestModalOpen(true);
+    setIsRequestLoading(true);
+
+    try {
+      const detail = await getRequestById(requestId);
+      if (latestRequestRequestRef.current !== requestSequence) return;
+      setSelectedRequest(detail);
+    } catch {
+      if (latestRequestRequestRef.current === requestSequence) {
+        setRequestError('Não foi possível carregar os dados da solicitação.');
+      }
+    } finally {
+      if (latestRequestRequestRef.current === requestSequence) {
+        setIsRequestLoading(false);
+      }
+    }
+  }
+
+  async function handleExportRequest(format: 'pdf' | 'csv' | 'excel') {
+    if (!selectedRequestId) return;
+    setRequestExportingFormat(format);
+    setRequestFeedback(null);
+
+    try {
+      const blob =
+        format === 'pdf'
+          ? await exportRequestPdf(selectedRequestId)
+          : format === 'csv'
+            ? await exportRequestCsv(selectedRequestId)
+            : await exportRequestExcel(selectedRequestId);
+
+      const filename = `${selectedRequestId}.${format === 'excel' ? 'xlsx' : format}`;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setRequestFeedback({
+        type: 'success',
+        message: `Arquivo ${format.toUpperCase()} baixado.`,
+      });
+    } catch {
+      setRequestFeedback({
+        type: 'error',
+        message: `Não foi possível gerar o arquivo ${format.toUpperCase()}.`,
+      });
+    } finally {
+      setRequestExportingFormat(null);
+    }
+  }
+
+  async function handleDownloadDocument(documentId: string) {
+    if (!selectedRequestId || !documentId) return;
+    setDownloadingDocumentId(documentId);
+    setRequestFeedback(null);
+
+    try {
+      const blob = await downloadRequestDocument(selectedRequestId, documentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `documento-${documentId}`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setRequestFeedback({
+        type: 'success',
+        message: 'Documento baixado com sucesso.',
+      });
+    } catch {
+      setRequestFeedback({
+        type: 'error',
+        message: 'Não foi possível baixar o documento.',
+      });
+    } finally {
+      setDownloadingDocumentId(null);
+    }
+  }
+
+  async function handleCopyRequestContent() {
+    if (!selectedRequest) return;
+    setIsCopyingRequest(true);
+    setHasCopiedRequest(false);
+    setRequestFeedback(null);
+
+    try {
+      const text = formatRequestDetailsForClipboard(selectedRequest);
+      const result = await writeTextToClipboard(text);
+      if (!result.success) {
+        setRequestFeedback({
+          type: 'error',
+          message:
+            'Não foi possível copiar o conteúdo. O navegador não autorizou a área de transferência.',
+        });
+        return;
+      }
+      setHasCopiedRequest(true);
+      setRequestFeedback({
+        type: 'success',
+        message: 'Conteúdo copiado para a área de transferência.',
+      });
+    } catch {
+      setRequestFeedback({
+        type: 'error',
+        message: 'Não foi possível copiar o conteúdo da solicitação.',
+      });
+    } finally {
+      setIsCopyingRequest(false);
+    }
+  }
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -115,20 +327,96 @@ export default function DashboardPage() {
           <CardTitle>Solicitações recentes</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {items.map((i) => (
+          <RequestDetailsModal
+            open={isRequestModalOpen}
+            request={selectedRequest}
+            loading={isRequestLoading}
+            error={requestError}
+            exportingFormat={requestExportingFormat}
+            downloadingDocumentId={downloadingDocumentId}
+            isCopying={isCopyingRequest}
+            hasCopied={hasCopiedRequest}
+            onClose={resetRequestModalState}
+            onRetry={() =>
+              selectedRequestId && handleViewRequest(selectedRequestId)
+            }
+            onExportPdf={() => handleExportRequest('pdf')}
+            onExportCsv={() => handleExportRequest('csv')}
+            onExportExcel={() => handleExportRequest('excel')}
+            onDownloadDocument={handleDownloadDocument}
+            onCopyContent={handleCopyRequestContent}
+          />
+
+          {requestFeedback ? (
             <div
-              key={i.id}
-              className="flex flex-col gap-3 rounded-md border border-border/80 bg-background/40 p-3 md:flex-row md:items-center md:justify-between"
+              role="status"
+              aria-live="polite"
+              className={cn(
+                'rounded-md border p-3 text-sm',
+                requestFeedback.type === 'success'
+                  ? 'border-success/40 bg-success/10 text-success'
+                  : 'border-danger/40 bg-danger/10 text-danger',
+              )}
             >
-              <div>
-                <p className="font-medium">{i.id}</p>
-                <p className="text-body">
-                  {i.tipo} • {i.devedora}
-                </p>
-              </div>
-              <StatusTag status={i.status} />
+              {requestFeedback.message}
             </div>
-          ))}
+          ) : null}
+
+          {loading ? (
+            <p className="text-body">Carregando solicitações...</p>
+          ) : items.length === 0 ? (
+            <p className="text-body text-muted-foreground">
+              Nenhuma solicitação recente encontrada.
+            </p>
+          ) : (
+            items.map((item) => {
+              const canEdit = canEditStatus.has(item.status);
+
+              return (
+                <div
+                  key={item.requestId}
+                  className="flex flex-col gap-3 rounded-md border border-border/80 bg-background/40 p-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{item.requestId}</p>
+                    <p className="text-body">
+                      {item.checklistType.replace(/_/g, ' ')} •{' '}
+                      {item.debtorName}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <StatusTag status={item.status} />
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewRequest(item.requestId)}
+                    >
+                      <Eye size={14} /> Consultar
+                    </Button>
+
+                    <Link
+                      href={`/solicitacoes/${item.requestId}/editar`}
+                      title={
+                        canEdit
+                          ? 'Editar solicitação'
+                          : 'Somente solicitações em NEEDS_CORRECTION podem ser editadas'
+                      }
+                      aria-disabled={!canEdit}
+                      tabIndex={canEdit ? 0 : -1}
+                      className={cn(
+                        buttonVariants({ variant: 'ghost', size: 'sm' }),
+                        !canEdit ? 'pointer-events-none opacity-45' : '',
+                      )}
+                    >
+                      <Pencil size={14} /> Editar
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </CardContent>
       </Card>
     </section>

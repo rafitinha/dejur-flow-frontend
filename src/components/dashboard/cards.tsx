@@ -11,13 +11,6 @@ export function DashboardMetricGrid() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <MetricCard
-        title="Rascunhos"
-        value="03"
-        trend="+1 hoje"
-        tone="default"
-        icon={<FileClock size={16} />}
-      />
-      <MetricCard
         title="Em análise IA"
         value="11"
         trend="-2 vs. ontem"
