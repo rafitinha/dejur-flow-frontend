@@ -34,7 +34,7 @@ export type PaginatedResponse<T> = {
 };
 
 // ---------------------------------------------------------------------------
-// FunÃ§Ãµes de API
+// Funcoes de API
 // ---------------------------------------------------------------------------
 
 export async function listMyRequests(

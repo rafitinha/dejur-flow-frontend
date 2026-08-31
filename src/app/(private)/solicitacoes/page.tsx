@@ -37,6 +37,7 @@ import {
   RequestStatus,
 } from '@/features/requests/types';
 import { cn } from '@/lib/utils/cn';
+import { useSession } from 'next-auth/react';
 
 const statusOptions: RequestStatus[] = [
   'DRAFT',
@@ -50,6 +51,9 @@ const statusOptions: RequestStatus[] = [
 ];
 
 export default function RequestsPage() {
+  const { data: session, status } = useSession();
+  const token = session?.accessToken;
+
   const [items, setItems] = useState<JudicialRequestListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -89,21 +93,32 @@ export default function RequestsPage() {
   async function loadRequests(
     activeFilters = appliedFilters,
     query = tableQuery,
+    currentToken = token,
   ) {
     setLoading(true);
     setError(null);
 
+    if (status !== 'authenticated' || !currentToken) {
+      setLoading(false);
+      setItems([]);
+      setTotalCount(0);
+      return;
+    }
+
     try {
-      const data = await listMyRequests({
-        startDate: activeFilters.startDate || undefined,
-        endDate: activeFilters.endDate || undefined,
-        status: activeFilters.status || undefined,
-        debtorCnpj: activeFilters.debtorCnpj || undefined,
-        pageIndex: query.pageIndex,
-        pageSize: query.pageSize,
-        sortBy: query.sortBy,
-        sortDirection: query.sortDirection,
-      });
+      const data = await listMyRequests(
+        {
+          startDate: activeFilters.startDate || undefined,
+          endDate: activeFilters.endDate || undefined,
+          status: activeFilters.status || undefined,
+          debtorCnpj: activeFilters.debtorCnpj || undefined,
+          pageIndex: query.pageIndex,
+          pageSize: query.pageSize,
+          sortBy: query.sortBy,
+          sortDirection: query.sortDirection,
+        },
+        currentToken,
+      );
       setTotalCount(data.totalCount);
       setItems(data.items);
     } catch {
@@ -116,9 +131,9 @@ export default function RequestsPage() {
   useEffect(() => {
     // Carregamento remoto quando mudam filtros aplicados ou query server-side.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadRequests(appliedFilters, tableQuery);
+    void loadRequests(appliedFilters, tableQuery, token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedFilters, tableQuery]);
+  }, [appliedFilters, tableQuery, token, status]);
 
   useEffect(() => {
     if (!requestFeedback) return;

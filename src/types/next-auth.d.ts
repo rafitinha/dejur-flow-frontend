@@ -6,16 +6,24 @@ declare module 'next-auth' {
     accessToken?: string;
     error?: 'RefreshAccessTokenError';
     user: DefaultSession['user'] & {
-      roles: Role[]; groups: string[]; photo?: string; photoUpdatedAt?: string;
-      jobTitle?: string; department?: string; companyName?: string;
+      roles: Role[];
+      groups: string[];
+      jobTitle?: string;
+      department?: string;
+      companyName?: string;
     };
   }
 }
 declare module 'next-auth/jwt' {
   interface JWT {
-    accessToken?: string; accessTokenExpires?: number; refreshToken?: string;
-    roles?: Role[]; groups?: string[]; photo?: string; photoUpdatedAt?: string;
-    jobTitle?: string; department?: string; companyName?: string;
+    accessToken?: string;
+    accessTokenExpires?: number;
+    refreshToken?: string;
+    roles?: Role[];
+    groups?: string[];
+    jobTitle?: string;
+    department?: string;
+    companyName?: string;
     error?: 'RefreshAccessTokenError';
   }
 }

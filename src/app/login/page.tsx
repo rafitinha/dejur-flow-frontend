@@ -18,11 +18,10 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-title">Entrar</CardTitle>
-          <CardDescription>
-            Use sua conta corporativa Microsoft para acessar o Validador
-            Judicial.
+        <CardHeader className="mb-2 flex-col items-start gap-2">
+          <CardDescription className="text-sm leading-relaxed text-muted-foreground">
+            Acesse com sua conta corporativa Microsoft para continuar no
+            Validador Judicial.
           </CardDescription>
         </CardHeader>
         <CardContent>

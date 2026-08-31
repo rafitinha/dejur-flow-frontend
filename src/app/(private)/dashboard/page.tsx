@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowRight,
@@ -45,6 +46,9 @@ import { cn } from '@/lib/utils/cn';
 const canEditStatus = new Set<RequestStatus>(['NEEDS_CORRECTION']);
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const accessToken = session?.accessToken;
+
   const [items, setItems] = useState<JudicialRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
@@ -76,11 +80,14 @@ export default function DashboardPage() {
       setLoading(true);
 
       try {
-        const data = await listMyRequests({
-          limit: 5,
-          sortBy: 'createdAt',
-          sortDirection: 'asc',
-        });
+        const data = await listMyRequests(
+          {
+            limit: 5,
+            sortBy: 'createdAt',
+            sortDirection: 'asc',
+          },
+          accessToken,
+        );
 
         if (!active) return;
         setItems(data.items);
@@ -100,7 +107,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
     if (!requestFeedback) return;
@@ -135,7 +142,7 @@ export default function DashboardPage() {
     setIsRequestLoading(true);
 
     try {
-      const detail = await getRequestById(requestId);
+      const detail = await getRequestById(requestId, accessToken);
       if (latestRequestRequestRef.current !== requestSequence) return;
       setSelectedRequest(detail);
     } catch {
@@ -157,10 +164,10 @@ export default function DashboardPage() {
     try {
       const blob =
         format === 'pdf'
-          ? await exportRequestPdf(selectedRequestId)
+          ? await exportRequestPdf(selectedRequestId, accessToken)
           : format === 'csv'
-            ? await exportRequestCsv(selectedRequestId)
-            : await exportRequestExcel(selectedRequestId);
+            ? await exportRequestCsv(selectedRequestId, accessToken)
+            : await exportRequestExcel(selectedRequestId, accessToken);
 
       const filename = `${selectedRequestId}.${format === 'excel' ? 'xlsx' : format}`;
       const url = window.URL.createObjectURL(blob);
@@ -191,7 +198,11 @@ export default function DashboardPage() {
     setRequestFeedback(null);
 
     try {
-      const blob = await downloadRequestDocument(selectedRequestId, documentId);
+      const blob = await downloadRequestDocument(
+        selectedRequestId,
+        documentId,
+        accessToken,
+      );
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
