@@ -3,7 +3,7 @@
   "info": {
     "title": "Validador de Ações Judiciais API",
     "version": "0.1.0",
-    "description": "Contrato proposto pelo front-end para o backend futuro."
+    "description": "Contrato atual do frontend e do mock da API para gestão de solicitações judiciais."
   },
   "servers": [
     {
@@ -18,13 +18,25 @@
           {
             "name": "status",
             "in": "query",
+            "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "SUBMITTED",
+                "PROCESSING",
+                "APPROVED",
+                "REJECTED",
+                "ERROR",
+                "NEEDS_CORRECTION",
+                "CANCELLED"
+              ]
             }
           },
           {
             "name": "startDate",
             "in": "query",
+            "required": false,
             "schema": {
               "type": "string",
               "format": "date"
@@ -33,32 +45,88 @@
           {
             "name": "endDate",
             "in": "query",
+            "required": false,
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "debtorCnpj",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lista paginada de solicitações",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RequestListItem"
-                  }
+                  "$ref": "#/components/schemas/PaginatedRequestsResponse"
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/api/v1/requests/drafts": {
       "post": {
-        "summary": "Cria rascunho",
+        "summary": "Cria um rascunho de solicitação",
         "requestBody": {
           "required": true,
           "content": {
@@ -71,7 +139,7 @@
         },
         "responses": {
           "201": {
-            "description": "Criado",
+            "description": "Rascunho criado",
             "content": {
               "application/json": {
                 "schema": {
@@ -79,54 +147,30 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/requests/{requestId}": {
-      "get": {
-        "summary": "Detalha solicitação",
-        "parameters": [
-          {
-            "name": "requestId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestDetail"
-                }
-              }
-            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/api/v1/requests/submit": {
       "post": {
-        "summary": "Submete solicitação com arquivos",
+        "summary": "Submete uma solicitação com arquivos",
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "metadata",
-                  "files"
-                ],
+                "required": ["metadata", "files"],
                 "properties": {
                   "metadata": {
                     "type": "string",
-                    "description": "JSON ChecklistPayload serializado"
+                    "description": "JSON serializado do payload da solicitação atual."
                   },
                   "files": {
                     "type": "array",
@@ -142,7 +186,7 @@
         },
         "responses": {
           "202": {
-            "description": "Aceito para processamento",
+            "description": "Solicitação aceita para processamento",
             "content": {
               "application/json": {
                 "schema": {
@@ -150,26 +194,429 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
-    "/api/v1/admin/requests/approved": {
+    "/api/v1/requests/{requestId}": {
       "get": {
-        "summary": "Lista aprovações para DEJUR/ADMIN",
+        "summary": "Detalha uma solicitação",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Detalhe da solicitação",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RequestListItem"
+                  "$ref": "#/components/schemas/RequestDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualiza uma solicitação existente",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["metadata", "files"],
+                "properties": {
+                  "metadata": {
+                    "type": "string",
+                    "description": "JSON serializado do payload da solicitação atual."
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
                   }
                 }
               }
             }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitação atualizada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestUpdated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}/documents": {
+      "post": {
+        "summary": "Envia arquivos anexos para uma solicitação",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["requestId", "userId", "files"],
+                "properties": {
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "userId": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Documentos enviados com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove documentos da solicitação",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRequestDocumentsPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Documentos removidos"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}/export/pdf": {
+      "get": {
+        "summary": "Exporta a solicitação em PDF",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo PDF",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}/export/csv": {
+      "get": {
+        "summary": "Exporta a solicitação em CSV",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}/export/xlsx": {
+      "get": {
+        "summary": "Exporta a solicitação em Excel",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo Excel",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/{requestId}/documents/{documentId}/download": {
+      "get": {
+        "summary": "Baixa um documento da solicitação",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo do documento",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/approved": {
+      "get": {
+        "summary": "Lista solicitações aprovadas para DEJUR/ADMIN",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "debtorCnpj",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitações aprovadas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedRequestsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -179,73 +626,625 @@
         "summary": "Lista notificações",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationItem"
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
   },
   "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Requisição inválida",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Não autenticado ou token inválido",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Recurso não encontrado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "schemas": {
+      "RequestStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "SUBMITTED",
+          "PROCESSING",
+          "APPROVED",
+          "REJECTED",
+          "ERROR",
+          "NEEDS_CORRECTION",
+          "CANCELLED"
+        ]
+      },
+      "ChecklistType": {
+        "type": "string",
+        "enum": [
+          "RECUPERACAO_VASILHAMES",
+          "COBRANCA_TITULOS",
+          "COBRANCA_MULTA_CONTRATUAL"
+        ]
+      },
       "RequestListItem": {
         "type": "object",
+        "required": [
+          "requestId",
+          "checklistType",
+          "debtorName",
+          "debtorCnpj",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "createdByEmail"
+        ],
         "properties": {
           "requestId": {
             "type": "string",
             "example": "REQ-2026-07-03-000001"
           },
           "checklistType": {
-            "type": "string"
+            "$ref": "#/components/schemas/ChecklistType"
           },
           "debtorName": {
-            "type": "string"
+            "type": "string",
+            "example": "Distribuidora Exemplo LTDA"
           },
           "debtorCnpj": {
-            "type": "string"
+            "type": "string",
+            "example": "17409361000199"
           },
           "status": {
-            "type": "string"
+            "$ref": "#/components/schemas/RequestStatus"
           },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-06-30T00:00:00.000Z"
           },
           "updatedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-06-30T00:00:00.000Z"
           },
           "createdByEmail": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "example": "maria.silva@empresa.com"
           },
           "llmScore": {
-            "type": "number"
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "maximum": 1,
+            "example": 0.94
+          }
+        }
+      },
+      "PaginatedRequestsResponse": {
+        "type": "object",
+        "required": ["items", "totalCount"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestListItem"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "NotificationItem": {
+        "type": "object",
+        "required": ["id", "title", "read"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
       "RequestCreated": {
         "type": "object",
+        "required": ["requestId", "status"],
         "properties": {
           "requestId": {
-            "type": "string"
+            "type": "string",
+            "example": "REQ-2026-07-03-000122"
           },
           "status": {
-            "type": "string",
-            "example": "DRAFT"
+            "$ref": "#/components/schemas/RequestStatus"
           }
         }
       },
       "SubmitResponse": {
         "type": "object",
+        "required": ["requestId", "status", "queuePosition"],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "example": "REQ-2026-07-03-000123"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatus"
+          },
+          "queuePosition": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          }
+        }
+      },
+      "RequestUpdated": {
+        "type": "object",
+        "required": ["requestId", "status", "updatedAt"],
         "properties": {
           "requestId": {
             "type": "string"
           },
           "status": {
-            "type": "string",
-            "example": "PROCESSING"
+            "$ref": "#/components/schemas/RequestStatus"
           },
-          "queuePosition": {
-            "type": "integer"
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreatedBy": {
+        "type": "object",
+        "required": ["name", "email"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Maria Silva"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "maria.silva@empresa.com"
+          }
+        }
+      },
+      "RequestCompany": {
+        "type": "object",
+        "required": ["name", "cnpj", "uf", "city"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Empresa Credora SA"
+          },
+          "cnpj": {
+            "type": "string",
+            "example": "24265750000153"
+          },
+          "uf": {
+            "type": "string",
+            "example": "SP"
+          },
+          "city": {
+            "type": "string",
+            "example": "Sao Paulo"
+          }
+        }
+      },
+      "RequestDebtor": {
+        "type": "object",
+        "required": [
+          "name",
+          "cnpj",
+          "uf",
+          "city",
+          "debtorAddress",
+          "addressConfirmedBy",
+          "addressConfirmedByRole",
+          "addressConfirmedByDate"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Distribuidora Exemplo LTDA"
+          },
+          "cnpj": {
+            "type": "string",
+            "example": "17409361000199"
+          },
+          "uf": {
+            "type": "string",
+            "example": "RJ"
+          },
+          "city": {
+            "type": "string",
+            "example": "Rio de Janeiro"
+          },
+          "debtorAddress": {
+            "type": "string",
+            "example": "debtorAddress - XxX"
+          },
+          "addressConfirmedBy": {
+            "type": "string",
+            "example": "addressConfirmedBy - XyZ"
+          },
+          "addressConfirmedByRole": {
+            "type": "string",
+            "example": "Analista Jurídico"
+          },
+          "addressConfirmedByDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-07-03"
+          }
+        }
+      },
+      "RequestFinancial": {
+        "type": "object",
+        "required": ["amount", "currency", "dueDate"],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "example": 152340.55
+          },
+          "currency": {
+            "type": "string",
+            "example": "BRL"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-30"
+          },
+          "index": {
+            "type": "string",
+            "example": "IPCA"
+          }
+        }
+      },
+      "AgreementAttempt": {
+        "type": "object",
+        "required": ["date", "channel", "result"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-15"
+          },
+          "channel": {
+            "type": "string",
+            "example": "email"
+          },
+          "result": {
+            "type": "string",
+            "example": "sem resposta"
+          }
+        }
+      },
+      "RequestOpinion": {
+        "type": "object",
+        "required": ["recommendedAction"],
+        "properties": {
+          "recommendedAction": {
+            "type": "string",
+            "example": "Ajuizamento"
+          },
+          "details": {
+            "type": "string",
+            "example": "Ação recomendada com base na análise do contrato."
+          }
+        }
+      },
+      "RequestDocument": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "example": "doc_123"
+          },
+          "name": {
+            "type": "string",
+            "example": "contrato.pdf"
+          },
+          "type": {
+            "type": "string",
+            "example": "CONTRATO"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "ClientValidation": {
+        "type": "object",
+        "required": ["approvedByClient"],
+        "properties": {
+          "approvedByClient": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "HistoryEntry": {
+        "type": "object",
+        "required": ["at", "from", "to"],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-07-03T14:20:00Z"
+          },
+          "from": {
+            "type": "string",
+            "example": "DRAFT"
+          },
+          "to": {
+            "type": "string",
+            "example": "SUBMITTED"
+          }
+        }
+      },
+      "ChecklistDetailsRecuperacaoVasilhames": {
+        "type": "object",
+        "required": ["checklistType"],
+        "properties": {
+          "checklistType": {
+            "type": "string",
+            "enum": ["RECUPERACAO_VASILHAMES"]
+          },
+          "p13Quantity": {
+            "type": "string",
+            "example": "10"
+          },
+          "p20Quantity": {
+            "type": "string",
+            "example": "5"
+          },
+          "p45Quantity": {
+            "type": "string",
+            "example": "2"
+          },
+          "historicalAmount": {
+            "type": "string",
+            "example": "1000.00"
+          },
+          "updatedAmount": {
+            "type": "string",
+            "example": "1200.00"
+          },
+          "refusalReason": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "ChecklistDetailsCobrancaTitulos": {
+        "type": "object",
+        "required": ["checklistType"],
+        "properties": {
+          "checklistType": {
+            "type": "string",
+            "enum": ["COBRANCA_TITULOS"]
+          },
+          "titleType": {
+            "type": "string",
+            "example": "DUPLICATA"
+          },
+          "titleNumber": {
+            "type": "string",
+            "example": "123456"
+          },
+          "guarantor": {
+            "type": "string",
+            "example": "Fulano de Tal"
+          },
+          "otherGuarantees": {
+            "type": "string",
+            "example": "Aval"
+          }
+        }
+      },
+      "ChecklistDetailsCobrancaMultaContratual": {
+        "type": "object",
+        "required": ["checklistType"],
+        "properties": {
+          "checklistType": {
+            "type": "string",
+            "enum": ["COBRANCA_MULTA_CONTRATUAL"]
+          },
+          "contractType": {
+            "type": "string",
+            "example": "Prestação de Serviços"
+          },
+          "breachedClause": {
+            "type": "string",
+            "example": "Cláusula 10"
+          },
+          "firstCycleFinished": {
+            "type": "boolean",
+            "example": true
+          },
+          "maxDiscount": {
+            "type": "string",
+            "example": "10%"
+          },
+          "value": {
+            "type": "string",
+            "example": "50000.00"
+          },
+          "index": {
+            "type": "string",
+            "example": "IPCA"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-07-03"
+          }
+        }
+      },
+      "ChecklistDetails": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ChecklistDetailsRecuperacaoVasilhames"
+          },
+          {
+            "$ref": "#/components/schemas/ChecklistDetailsCobrancaTitulos"
+          },
+          {
+            "$ref": "#/components/schemas/ChecklistDetailsCobrancaMultaContratual"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "checklistType",
+          "mapping": {
+            "RECUPERACAO_VASILHAMES": "#/components/schemas/ChecklistDetailsRecuperacaoVasilhames",
+            "COBRANCA_TITULOS": "#/components/schemas/ChecklistDetailsCobrancaTitulos",
+            "COBRANCA_MULTA_CONTRATUAL": "#/components/schemas/ChecklistDetailsCobrancaMultaContratual"
+          }
+        }
+      },
+      "LlmResult": {
+        "type": "object",
+        "required": [
+          "requestId",
+          "status",
+          "score",
+          "summary",
+          "structuredReport",
+          "missingFields",
+          "missingDocuments",
+          "inconsistencies",
+          "recommendations",
+          "canResubmit",
+          "reviewedAt"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "example": "REQ-2026-07-03-000001"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatus"
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "maximum": 1,
+            "example": 0.78
+          },
+          "summary": {
+            "type": "string",
+            "example": "Faltam anexos comprobatórios."
+          },
+          "structuredReport": {
+            "type": "object",
+            "description": "Relatório estruturado opcional, normalmente utilizado para apresentar indicadores da análise.",
+            "additionalProperties": true,
+            "example": {}
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": []
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["comprovante_entrega"]
+          },
+          "inconsistencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": []
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Anexar comprovante de entrega assinado."]
+          },
+          "canResubmit": {
+            "type": "boolean",
+            "example": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-07-03T15:05:00Z"
           }
         }
       },
@@ -262,123 +1261,253 @@
         ],
         "properties": {
           "checklistType": {
-            "type": "string",
-            "enum": [
-              "RECUPERACAO_VASILHAMES",
-              "COBRANCA_TITULOS",
-              "COBRANCA_MULTA_CONTRATUAL"
-            ]
+            "$ref": "#/components/schemas/ChecklistType"
           },
           "createdBy": {
-            "type": "object"
+            "$ref": "#/components/schemas/CreatedBy"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-30"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-30"
           },
           "company": {
-            "type": "object"
+            "$ref": "#/components/schemas/RequestCompany"
           },
           "debtor": {
-            "type": "object"
+            "$ref": "#/components/schemas/RequestDebtor"
           },
           "financial": {
-            "type": "object"
+            "$ref": "#/components/schemas/RequestFinancial"
           },
           "agreementAttempts": {
             "type": "array",
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/AgreementAttempt"
             }
           },
           "factsSummary": {
-            "type": "string"
+            "type": "string",
+            "example": "Inadimplencia superior a 90 dias com notificacoes enviadas."
           },
           "opinion": {
-            "type": "object"
+            "$ref": "#/components/schemas/RequestOpinion"
           },
           "documents": {
             "type": "array",
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/RequestDocument"
             }
           },
           "clientValidation": {
-            "type": "object"
+            "$ref": "#/components/schemas/ClientValidation"
+          },
+          "checklistDetails": {
+            "$ref": "#/components/schemas/ChecklistDetails"
           }
         }
       },
       "RequestDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ChecklistPayload"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "requestId": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              },
-              "history": {
-                "type": "array",
-                "items": {
-                  "type": "object"
-                }
-              },
-              "llmResult": {
-                "$ref": "#/components/schemas/LlmResult"
-              }
-            }
-          }
-        ]
-      },
-      "LlmResult": {
         "type": "object",
+        "required": [
+          "requestId",
+          "status",
+          "checklistType",
+          "createdBy",
+          "company",
+          "debtor",
+          "financial",
+          "agreementAttempts",
+          "factsSummary",
+          "opinion",
+          "documents",
+          "clientValidation",
+          "history",
+          "checklistDetails"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "example": "REQ-2026-07-03-000001"
+          },
+          "userId": {
+            "type": "string",
+            "example": "4523848234928492ewdfsewfpjpejgew"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatus"
+          },
+          "checklistType": {
+            "$ref": "#/components/schemas/ChecklistType"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/CreatedBy"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-30"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-06-30"
+          },
+          "company": {
+            "$ref": "#/components/schemas/RequestCompany"
+          },
+          "debtor": {
+            "$ref": "#/components/schemas/RequestDebtor"
+          },
+          "financial": {
+            "$ref": "#/components/schemas/RequestFinancial"
+          },
+          "agreementAttempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgreementAttempt"
+            }
+          },
+          "factsSummary": {
+            "type": "string",
+            "example": "Inadimplencia superior a 90 dias com notificacoes enviadas."
+          },
+          "opinion": {
+            "$ref": "#/components/schemas/RequestOpinion"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestDocument"
+            }
+          },
+          "clientValidation": {
+            "$ref": "#/components/schemas/ClientValidation"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            }
+          },
+          "checklistDetails": {
+            "$ref": "#/components/schemas/ChecklistDetails"
+          },
+          "llmResult": {
+            "$ref": "#/components/schemas/LlmResult"
+          }
+        },
+        "example": {
+          "requestId": "REQ-2026-07-03-000001",
+          "userId": "4523848234928492ewdfsewfpjpejgew",
+          "status": "NEEDS_CORRECTION",
+          "checklistType": "COBRANCA_TITULOS",
+          "createdBy": {
+            "name": "Maria Silva",
+            "email": "maria.silva@empresa.com"
+          },
+          "createdAt": "2026-06-30",
+          "updatedAt": "2026-06-30",
+          "company": {
+            "name": "Empresa Credora SA",
+            "cnpj": "24265750000153",
+            "uf": "SP",
+            "city": "Sao Paulo"
+          },
+          "debtor": {
+            "name": "Distribuidora Exemplo LTDA",
+            "cnpj": "17409361000199",
+            "uf": "RJ",
+            "city": "Rio de Janeiro",
+            "debtorAddress": "debtorAddress - XxX",
+            "addressConfirmedBy": "addressConfirmedBy - XyZ",
+            "addressConfirmedByRole": "Analista Jurídico",
+            "addressConfirmedByDate": "2026-07-03"
+          },
+          "financial": {
+            "amount": 152340.55,
+            "currency": "BRL",
+            "dueDate": "2026-06-30"
+          },
+          "agreementAttempts": [
+            {
+              "date": "2026-06-15",
+              "channel": "email",
+              "result": "sem resposta"
+            }
+          ],
+          "factsSummary": "Inadimplencia superior a 90 dias com notificacoes enviadas.",
+          "opinion": {
+            "recommendedAction": "Ajuizamento"
+          },
+          "documents": [
+            {
+              "name": "contrato.pdf",
+              "type": "CONTRATO"
+            },
+            {
+              "name": "contrato2.pdf",
+              "type": "CONTRATO"
+            }
+          ],
+          "clientValidation": {
+            "approvedByClient": true
+          },
+          "history": [
+            {
+              "at": "2026-07-03T14:20:00Z",
+              "from": "DRAFT",
+              "to": "SUBMITTED"
+            }
+          ],
+          "checklistDetails": {
+            "checklistType": "COBRANCA_TITULOS",
+            "titleType": "DUPLICATA",
+            "titleNumber": "123456",
+            "guarantor": "Fulano de Tal",
+            "otherGuarantees": "Aval"
+          },
+          "llmResult": {
+            "requestId": "REQ-2026-07-03-000001",
+            "status": "NEEDS_CORRECTION",
+            "score": 0.78,
+            "summary": "Faltam anexos comprobatórios.",
+            "structuredReport": {},
+            "missingFields": [],
+            "missingDocuments": ["comprovante_entrega"],
+            "inconsistencies": [],
+            "recommendations": ["Anexar comprovante de entrega assinado."],
+            "canResubmit": true,
+            "reviewedAt": "2026-07-03T15:05:00Z"
+          }
+        }
+      },
+      "DeleteRequestDocumentsPayload": {
+        "type": "object",
+        "required": ["requestId", "userId", "documents"],
         "properties": {
           "requestId": {
             "type": "string"
           },
-          "status": {
+          "userId": {
             "type": "string"
           },
-          "score": {
-            "type": "number"
-          },
-          "summary": {
-            "type": "string"
-          },
-          "structuredReport": {
-            "type": "object"
-          },
-          "missingFields": {
+          "documents": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "required": ["documentId"],
+              "properties": {
+                "documentId": {
+                  "type": "string"
+                }
+              }
             }
-          },
-          "missingDocuments": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "inconsistencies": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "recommendations": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "canResubmit": {
-            "type": "boolean"
-          },
-          "reviewedAt": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       }
