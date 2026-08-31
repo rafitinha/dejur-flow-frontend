@@ -48,10 +48,18 @@ export function buildServerTableQuery(params: {
 export function buildExportRoute(
   baseRoute: string,
   query: ServerTableQuery,
-  format: 'csv' | 'xlsx',
 ) {
+  const apiBaseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_BACKEND_URL ??
+    'http://localhost:8080';
+
+  const normalizedBaseUrl = apiBaseUrl.replace(/\/+$/, '');
+  const normalizedRoute = baseRoute.startsWith('http')
+    ? baseRoute
+    : `${normalizedBaseUrl}${baseRoute.startsWith('/') ? baseRoute : `/${baseRoute}`}`;
+
   const params = new URLSearchParams();
-  params.set('format', format);
   params.set('pageIndex', String(query.pageIndex));
   params.set('pageSize', String(query.pageSize));
   params.set('offset', String(query.offset));
@@ -61,12 +69,13 @@ export function buildExportRoute(
   if (query.filters) {
     Object.entries(query.filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && String(value) !== '') {
-        params.set(`filter.${key}`, String(value));
+        params.set(key, String(value));
       }
     });
   }
 
-  return `${baseRoute}?${params.toString()}`;
+  const route = `${normalizedRoute}${params.toString() ? `?${params.toString()}` : ''}`;
+  return route;
 }
 
 export function ServerDataTable<T extends object>({

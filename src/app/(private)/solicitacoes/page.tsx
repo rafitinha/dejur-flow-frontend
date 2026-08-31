@@ -495,17 +495,15 @@ export default function RequestsPage() {
           loading={loading}
           onExportCSV={(query) => {
             const route = buildExportRoute(
-              REQUESTS_API_ROUTES.exportCsv(selectedRequestId ?? ''),
+              REQUESTS_API_ROUTES.listExportCsv,
               query,
-              'csv',
             );
             window.open(route, '_blank');
           }}
           onExportExcel={(query) => {
             const route = buildExportRoute(
-              REQUESTS_API_ROUTES.exportExcel(selectedRequestId ?? ''),
+              REQUESTS_API_ROUTES.listExportExcel,
               query,
-              'xlsx',
             );
             window.open(route, '_blank');
           }}
