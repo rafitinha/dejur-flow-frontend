@@ -38,12 +38,17 @@ export type RequestDebtor = {
   cnpj: string;
   uf: string;
   city: string;
+  debtorAddress: string;
+  addressConfirmedBy: string;
+  addressConfirmedByRole: string;
+  addressConfirmedByDate: string;
 };
 
 export type RequestFinancial = {
   amount: number;
   currency: string;
   dueDate: string;
+  index: string;
 };
 
 export type AgreementAttempt = {
@@ -106,6 +111,34 @@ export type RequestSpecificData =
       };
     };
 
+export type ChecklistDetails =
+  | {
+      checklistType: 'RECUPERACAO_VASILHAMES';
+      p13Quantity?: string;
+      p20Quantity?: string;
+      p45Quantity?: string;
+      historicalAmount?: string;
+      updatedAmount?: string;
+      refusalReason?: string;
+    }
+  | {
+      checklistType: 'COBRANCA_TITULOS';
+      titleType?: string;
+      titleNumber?: string;
+      guarantor?: string;
+      otherGuarantees?: string;
+    }
+  | {
+      checklistType: 'COBRANCA_MULTA_CONTRATUAL';
+      contractType?: string;
+      breachedClause?: string;
+      firstCycleFinished?: boolean;
+      maxDiscount?: string;
+      value?: string;
+      index?: string;
+      updatedAt?: string;
+    };
+
 export type JudicialRequestDetail = {
   requestId: string;
   status: RequestStatus;
@@ -143,7 +176,8 @@ export type JudicialRequestDetail = {
   /**
    * Request-specific data
    */
-  data: RequestSpecificData;
+  //data: RequestSpecificData;
+  checklistDetails: ChecklistDetails;
 
   llmResult?: {
     requestId: string;
@@ -168,6 +202,11 @@ export type StructuredReport = {
   legalReadiness?: string;
 };
 
+export type CreatedBy = {
+  name?: string;
+  email?: string;
+};
+
 export type JudicialRequestDetailType = {
   requestId: string;
   status: RequestStatus;
@@ -189,4 +228,5 @@ export type JudicialRequestDetailType = {
   llmScore?: number;
   documents?: ExistingDocument[];
   formData?: Partial<WizardFormData>;
+  createdBy?: CreatedBy;
 };

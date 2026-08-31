@@ -45,10 +45,7 @@ export function buildServerTableQuery(params: {
   } satisfies ServerTableQuery;
 }
 
-export function buildExportRoute(
-  baseRoute: string,
-  query: ServerTableQuery,
-) {
+export function buildExportRoute(baseRoute: string, query: ServerTableQuery) {
   const apiBaseUrl =
     process.env.NEXT_PUBLIC_API_BASE_URL ??
     process.env.NEXT_PUBLIC_BACKEND_URL ??

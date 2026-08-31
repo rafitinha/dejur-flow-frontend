@@ -31,11 +31,20 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatCurrency = (value: number) => {
+const formatCurrency = (
+  value: number | string | null | undefined,
+  showCurrency = true,
+) => {
+  const numericValue = Number(value) || 0;
+
   return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+    ...(showCurrency && {
+      style: 'currency',
+      currency: 'BRL',
+    }),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numericValue);
 };
 
 const formatFileSize = (bytes: number) => {
@@ -92,6 +101,42 @@ function extractWizardFormData(
 export function mapRequestDetailToWizardForm(
   detail: JudicialRequestDetail,
 ): Partial<WizardFormData> {
+  const checklistDetails = detail.checklistDetails;
+  checklistDetails.checklistType = detail.checklistType;
+
+  let checklistData: Partial<WizardFormData> = {};
+
+  switch (checklistDetails.checklistType) {
+    case 'RECUPERACAO_VASILHAMES':
+      checklistData = {
+        rvP13: checklistDetails.p13Quantity,
+        rvP20: checklistDetails.p20Quantity,
+        rvP45: checklistDetails.p45Quantity,
+        rvHistoricalAmount: checklistDetails.historicalAmount,
+        rvUpdatedAmount: checklistDetails.updatedAmount,
+        rvRefusalReason: checklistDetails.refusalReason,
+      };
+      break;
+
+    case 'COBRANCA_TITULOS':
+      checklistData = {
+        ctTitleType: checklistDetails.titleType,
+        ctTitleNumber: checklistDetails.titleNumber,
+        ctGuarantor: checklistDetails.guarantor,
+        ctOtherGuarantees: checklistDetails.otherGuarantees,
+      };
+      break;
+
+    case 'COBRANCA_MULTA_CONTRATUAL':
+      checklistData = {
+        mcContractType: checklistDetails.contractType,
+        mcBreachedClause: checklistDetails.breachedClause,
+        mcFirstCycleFinished: checklistDetails.firstCycleFinished,
+        mcMaxDiscount: checklistDetails.maxDiscount,
+      };
+      break;
+  }
+
   return {
     // Empresa
     companyLegalName: detail.company.name,
@@ -103,31 +148,13 @@ export function mapRequestDetailToWizardForm(
     debtorLegalName: detail.debtor.name,
     debtorCnpj: formatDocument(detail.debtor.cnpj),
 
-    // Não existem no novo DTO
-    debtorAddress: '',
-    addressConfirmedBy: '',
-    addressConfirmedByRole: '',
-    addressConfirmedByDate: '',
+    debtorAddress: detail.debtor.debtorAddress,
+    addressConfirmedBy: detail.debtor.addressConfirmedBy,
+    addressConfirmedByRole: detail.debtor.addressConfirmedByRole,
+    addressConfirmedByDate: detail.debtor.addressConfirmedByDate,
 
-    // RV
-    rvP13: '',
-    rvP20: '',
-    rvP45: '',
-    rvHistoricalAmount: detail.financial.amount.toString(),
-    rvUpdatedAmount: detail.financial.amount.toString(),
-    rvRefusalReason: '',
-
-    // Cobrança de títulos
-    ctTitleType: '',
-    ctTitleNumber: '',
-    ctGuarantor: '',
-    ctOtherGuarantees: '',
-
-    // Multa contratual
-    mcContractType: '',
-    mcBreachedClause: '',
-    mcFirstCycleFinished: false,
-    mcMaxDiscount: '',
+    // Dados específicos do checklist
+    ...checklistData,
 
     // Tentativas de acordo
     agreementDetails: detail.agreementAttempts
@@ -141,8 +168,9 @@ export function mapRequestDetailToWizardForm(
       `Valor: ${detail.financial.amount} ${detail.financial.currency}`,
       `Vencimento: ${detail.financial.dueDate}`,
     ].join('\n'),
-    financialValue: detail.financial.amount.toString(),
-    financialIndex: '',
+
+    financialValue: formatCurrency(detail.financial.amount.toString(), false),
+    financialIndex: detail.financial.index,
     financialUpdatedDate: detail.financial.dueDate,
 
     // Fatos
@@ -329,7 +357,7 @@ export default function RequestEditPage({
           fd.append('metadata', JSON.stringify(payload));
 
           await updateRequest(requestId, fd);
-          return { requestId, userId: detail.createdByEmail };
+          return { requestId, userId: detail?.createdBy?.email };
         }}
       />
     );

@@ -471,6 +471,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
       );
       onCompleted?.();
     } catch (submitError) {
+      console.error(submitError);
       setSubmitError(
         submitError instanceof Error
           ? submitError.message
