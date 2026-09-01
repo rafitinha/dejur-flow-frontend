@@ -20,6 +20,7 @@ import { CookieConsentClient } from '@/features/privacy/CookieConsentClient';
 export default function HomePage() {
   const router = useRouter();
   const { status } = useSession();
+  const authGuardEnabled = process.env.NEXT_PUBLIC_ENABLE_AUTH_GUARD === 'true';
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -49,12 +50,18 @@ export default function HomePage() {
                 >
                   Entrar com Microsoft
                 </Link>
-                <Link
-                  href="/dashboard"
-                  className={buttonVariants({ variant: 'outline', size: 'lg' })}
-                >
-                  Acessar ambiente <ArrowRight size={16} />
-                </Link>
+
+                {!authGuardEnabled ? (
+                  <Link
+                    href="/dashboard"
+                    className={buttonVariants({
+                      variant: 'outline',
+                      size: 'lg',
+                    })}
+                  >
+                    Acessar ambiente <ArrowRight size={16} />
+                  </Link>
+                ) : null}
               </div>
             </CardContent>
             <div className="border-l border-border/70 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 p-8 md:p-10">
