@@ -16,11 +16,18 @@ function buildHeaders(accessToken?: string): HeadersInit {
 // Tipos
 // ---------------------------------------------------------------------------
 
+export type ApiUser = {
+  id: number | string;
+  name: string;
+  email: string;
+};
+
 export type ListMyRequestsFilters = {
   status?: string;
   startDate?: string;
   endDate?: string;
   debtorCnpj?: string;
+  userIds?: string;
   pageIndex?: number;
   pageSize?: number;
   limit?: number;
@@ -32,6 +39,17 @@ export type PaginatedResponse<T> = {
   items: T[];
   totalCount: number;
 };
+
+export async function listUsers(accessToken?: string): Promise<ApiUser[]> {
+  const endpoint = `${baseUrl}/api/v1/users`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!r.ok) throw new Error('Erro ao consultar usuários');
+  return r.json() as Promise<ApiUser[]>;
+}
 
 // ---------------------------------------------------------------------------
 // Funcoes de API
@@ -46,6 +64,7 @@ export async function listMyRequests(
   if (filters.startDate) query.set('startDate', filters.startDate);
   if (filters.endDate) query.set('endDate', filters.endDate);
   if (filters.debtorCnpj) query.set('debtorCnpj', filters.debtorCnpj);
+  if (filters.userIds) query.set('userIds', filters.userIds);
   if (filters.pageIndex !== undefined)
     query.set('pageIndex', String(filters.pageIndex));
   if (filters.pageSize !== undefined)
@@ -84,6 +103,7 @@ export async function listApprovedRequests(
   if (filters.startDate) query.set('startDate', filters.startDate);
   if (filters.endDate) query.set('endDate', filters.endDate);
   if (filters.debtorCnpj) query.set('debtorCnpj', filters.debtorCnpj);
+  if (filters.userIds) query.set('userIds', filters.userIds);
   if (filters.pageIndex !== undefined)
     query.set('pageIndex', String(filters.pageIndex));
   if (filters.pageSize !== undefined)

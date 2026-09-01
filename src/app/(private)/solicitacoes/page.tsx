@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/Input';
+import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 import { Select } from '@/components/ui/Select';
 import { StatusTag } from '@/components/ui/StatusTag';
 import {
@@ -25,6 +26,7 @@ import {
   exportRequestPdf,
   getRequestById,
   listMyRequests,
+  listUsers,
 } from '@/features/requests/api';
 import {
   formatRequestDetailsForClipboard,
@@ -39,16 +41,23 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { useSession } from 'next-auth/react';
 
-const statusOptions: RequestStatus[] = [
-  'DRAFT',
-  'SUBMITTED',
-  'PROCESSING',
-  'APPROVED',
-  'REJECTED',
-  'ERROR',
-  'NEEDS_CORRECTION',
-  'CANCELLED',
-];
+const statusLabels: Record<RequestStatus, string> = {
+  DRAFT: 'Rascunho',
+  SUBMITTED: 'Enviada',
+  PROCESSING: 'Em processamento',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+  ERROR: 'Erro',
+  NEEDS_CORRECTION: 'Necessita correção',
+  CANCELLED: 'Cancelada',
+};
+
+const statusOptions: { value: RequestStatus; label: string }[] = Object.entries(
+  statusLabels,
+).map(([value, label]) => ({
+  value: value as RequestStatus,
+  label,
+}));
 
 export default function RequestsPage() {
   const { data: session, status } = useSession();
@@ -63,8 +72,16 @@ export default function RequestsPage() {
     endDate: '',
     status: '',
     debtorCnpj: '',
+    userIds: [] as string[],
   });
-  const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [userOptions, setUserOptions] = useState<MultiSelectOption[]>([]);
+  const [appliedFilters, setAppliedFilters] = useState({
+    startDate: '',
+    endDate: '',
+    status: '',
+    debtorCnpj: '',
+    userIds: '',
+  });
   const [tableQuery, setTableQuery] = useState<ServerTableQuery>(
     buildServerTableQuery({ pageIndex: 0, pageSize: 10 }),
   );
@@ -90,6 +107,10 @@ export default function RequestsPage() {
   } | null>(null);
   const latestRequestRequestRef = useRef(0);
 
+  function serializeUserIds(value: string[]) {
+    return value.join(',');
+  }
+
   async function loadRequests(
     activeFilters = appliedFilters,
     query = tableQuery,
@@ -112,6 +133,7 @@ export default function RequestsPage() {
           endDate: activeFilters.endDate || undefined,
           status: activeFilters.status || undefined,
           debtorCnpj: activeFilters.debtorCnpj || undefined,
+          userIds: activeFilters.userIds || undefined,
           pageIndex: query.pageIndex,
           pageSize: query.pageSize,
           sortBy: query.sortBy,
@@ -134,6 +156,27 @@ export default function RequestsPage() {
     void loadRequests(appliedFilters, tableQuery, token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters, tableQuery, token, status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !token) return;
+
+    async function loadUsers() {
+      try {
+        const users = await listUsers(token);
+        setUserOptions(
+          users.map((user) => ({
+            value: String(user.id),
+            label: user.name,
+            secondary: user.email,
+          })),
+        );
+      } catch {
+        setUserOptions([]);
+      }
+    }
+
+    void loadUsers();
+  }, [status, token]);
 
   useEffect(() => {
     if (!requestFeedback) return;
@@ -366,7 +409,7 @@ export default function RequestsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <DatePicker
               value={filters.startDate}
               onChange={(value) =>
@@ -390,8 +433,8 @@ export default function RequestsPage() {
               options={[
                 { value: '', label: 'Todos os status' },
                 ...statusOptions.map((status) => ({
-                  value: status,
-                  label: status,
+                  value: status.value,
+                  label: status.label,
                 })),
               ]}
             />
@@ -403,18 +446,35 @@ export default function RequestsPage() {
                 setFilters((prev) => ({ ...prev, debtorCnpj: e.target.value }))
               }
             />
+
+            <MultiSelect
+              value={filters.userIds}
+              options={userOptions}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, userIds: value }))
+              }
+              placeholder="Responsável"
+            />
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               onClick={() => {
-                setAppliedFilters(filters);
+                const nextFilters = {
+                  startDate: filters.startDate,
+                  endDate: filters.endDate,
+                  status: filters.status,
+                  debtorCnpj: filters.debtorCnpj,
+                  userIds: serializeUserIds(filters.userIds),
+                };
+
+                setAppliedFilters(nextFilters);
                 setTableQuery((prev) =>
                   buildServerTableQuery({
                     ...prev,
                     pageIndex: 0,
                     pageSize: prev.pageSize,
-                    filters,
+                    filters: nextFilters,
                   }),
                 );
               }}
@@ -429,15 +489,24 @@ export default function RequestsPage() {
                   endDate: '',
                   status: '',
                   debtorCnpj: '',
+                  userIds: [] as string[],
                 };
+                const clearedAppliedFilters = {
+                  startDate: '',
+                  endDate: '',
+                  status: '',
+                  debtorCnpj: '',
+                  userIds: '',
+                };
+
                 setFilters(clearedFilters);
-                setAppliedFilters(clearedFilters);
+                setAppliedFilters(clearedAppliedFilters);
                 setTableQuery((prev) =>
                   buildServerTableQuery({
                     ...prev,
                     pageIndex: 0,
                     pageSize: prev.pageSize,
-                    filters: clearedFilters,
+                    filters: clearedAppliedFilters,
                   }),
                 );
               }}
