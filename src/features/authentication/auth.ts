@@ -138,9 +138,8 @@ export const authOptions: NextAuthOptions = {
       session.error = token.error;
 
       /*
-      console.log('after assignment', {
-        tokenAccessToken: token.accessToken,
-        sessionAccessToken: session.accessToken,
+      console.log('roles assignment', {
+        roles: token.roles,
       });*/
 
       return session;

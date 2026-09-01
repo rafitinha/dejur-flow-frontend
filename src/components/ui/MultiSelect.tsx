@@ -54,7 +54,8 @@ export function MultiSelect({
     if (!normalized) return options;
 
     return options.filter((option) => {
-      const haystack = `${option.label} ${option.secondary ?? ''}`.toLowerCase();
+      const haystack =
+        `${option.label} ${option.secondary ?? ''}`.toLowerCase();
       return haystack.includes(normalized);
     });
   }, [options, query]);
@@ -68,7 +69,10 @@ export function MultiSelect({
   }
 
   return (
-    <div ref={containerRef} className={cn('relative', disabled && 'opacity-60')}>
+    <div
+      ref={containerRef}
+      className={cn('relative', disabled && 'opacity-60')}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(true)}
@@ -159,11 +163,15 @@ export function MultiSelect({
                     }}
                     className={cn(
                       'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition',
-                      isSelected ? 'bg-muted text-foreground' : 'hover:bg-hover',
+                      isSelected
+                        ? 'bg-muted text-foreground'
+                        : 'hover:bg-hover',
                     )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{option.label}</span>
+                      <span className="block truncate font-medium">
+                        {option.label}
+                      </span>
                       {option.secondary && (
                         <span className="block truncate text-xs text-muted-foreground">
                           {option.secondary}
@@ -192,7 +200,9 @@ export function MultiSelect({
                     key={option.value}
                     className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/50 px-2 py-1.5"
                   >
-                    <span className="min-w-0 flex-1 truncate text-sm">{option.label}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {option.label}
+                    </span>
                     <button
                       type="button"
                       onClick={() => toggleValue(option.value)}
