@@ -11,7 +11,7 @@ export type ExistingDocument = {
   documentId?: string;
   name?: string;
   type?: string;
-  size?: number;
+  size?: number | string;
   uploadedAt?: string;
   downloadUrl?: string;
 };
@@ -22,7 +22,7 @@ export type UploadItem = {
   file?: File;
   name: string;
   type?: string;
-  size?: number;
+  size?: number | string;
   uploadedAt?: string;
   downloadUrl?: string;
   status: UploadItemStatus;

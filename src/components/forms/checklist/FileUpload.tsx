@@ -22,10 +22,20 @@ type FileUploadProps = {
 
 const DEFAULT_ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.jpeg';
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function normalizeFileSize(size?: number | string) {
+  if (size === undefined || size === null || size === '') return 0;
+
+  const numericSize = typeof size === 'string' ? Number(size) : size;
+  return Number.isFinite(numericSize) ? numericSize : 0;
+}
+
+function formatFileSize(bytes: number | string) {
+  const normalizedSize = normalizeFileSize(bytes);
+
+  if (normalizedSize < 1024) return `${normalizedSize} B`;
+  if (normalizedSize < 1024 * 1024)
+    return `${(normalizedSize / 1024).toFixed(1)} KB`;
+  return `${(normalizedSize / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getStatusContent(item: UploadItem) {
@@ -93,11 +103,10 @@ export function FileUpload({
 
     setLocalError(undefined);
 
-    const currentTotal = items.reduce(
-      (total, item) =>
-        item.status === 'pending_delete' ? total : total + (item.size ?? 0),
-      0,
-    );
+    const currentTotal = items.reduce((total, item) => {
+      if (item.status === 'pending_delete') return total;
+      return total + normalizeFileSize(item.size);
+    }, 0);
     const selectedTotal = selectedFiles.reduce(
       (total, file) => total + file.size,
       0,
@@ -189,6 +198,7 @@ export function FileUpload({
             const isProcessing =
               item.status === 'uploading' || item.status === 'deleting';
             const isUndo = item.status === 'pending_delete';
+            const canDownload = Boolean(item.downloadUrl);
 
             return (
               <li
@@ -226,20 +236,33 @@ export function FileUpload({
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => void handleRemove(item)}
-                  disabled={isProcessing}
-                  aria-label={`${isUndo ? 'Desfazer exclusão de' : 'Excluir'} ${item.name}`}
-                  title={isUndo ? 'Desfazer exclusão' : 'Excluir arquivo'}
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isUndo ? (
-                    <RotateCcw size={17} aria-hidden="true" />
-                  ) : (
-                    <Trash2 size={17} aria-hidden="true" />
+                <div className="flex items-center gap-2">
+                  {canDownload && (
+                    <a
+                      href={item.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
+                    >
+                      Baixar
+                    </a>
                   )}
-                </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleRemove(item)}
+                    disabled={isProcessing}
+                    aria-label={`${isUndo ? 'Desfazer exclusão de' : 'Excluir'} ${item.name}`}
+                    title={isUndo ? 'Desfazer exclusão' : 'Excluir arquivo'}
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isUndo ? (
+                      <RotateCcw size={17} aria-hidden="true" />
+                    ) : (
+                      <Trash2 size={17} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
               </li>
             );
           })}

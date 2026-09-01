@@ -66,7 +66,7 @@ export type RequestDocument = {
   documentId?: string;
   name?: string;
   type?: string;
-  size?: number;
+  size?: number | string;
   uploadedAt?: string;
   downloadUrl?: string;
 };

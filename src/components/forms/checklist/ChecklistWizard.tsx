@@ -86,6 +86,13 @@ function defaultSubmit(params: ChecklistWizardSubmitParams) {
   alert('Mock: solicitação submetida como PROCESSING');
 }
 
+function normalizeDocumentSize(size?: number | string) {
+  if (size === undefined || size === null || size === '') return 0;
+
+  const numericSize = typeof size === 'string' ? Number(size) : size;
+  return Number.isFinite(numericSize) ? numericSize : 0;
+}
+
 function createInitialUploadItems(
   existingDocuments: ExistingDocument[],
 ): UploadItem[] {
@@ -96,7 +103,7 @@ function createInitialUploadItems(
     documentId: document.documentId,
     name: document.name ?? 'Documento sem nome',
     type: document.type,
-    size: document.size,
+    size: normalizeDocumentSize(document.size),
     uploadedAt: document.uploadedAt,
     downloadUrl: document.downloadUrl,
     status: 'existing',
@@ -112,7 +119,7 @@ function toExistingDocument(item: UploadItem): ExistingDocument {
     documentId: item.documentId,
     name: item.name,
     type: item.type,
-    size: item.size,
+    size: normalizeDocumentSize(item.size),
     uploadedAt: item.uploadedAt,
     downloadUrl: item.downloadUrl,
   };
