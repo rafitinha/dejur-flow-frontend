@@ -1,6 +1,6 @@
-import { withAuth } from 'next-auth/middleware';
+import { withAuth, type NextRequestWithAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 
 const isAuthGuardEnabled = process.env.ENABLE_AUTH_GUARD === 'true';
 
@@ -15,7 +15,9 @@ const isAuthGuardEnabled = process.env.ENABLE_AUTH_GUARD === 'true';
  */
 const authProxy = isAuthGuardEnabled
   ? withAuth(
-      function middleware(_req: NextRequest) {
+      function middleware(request: NextRequestWithAuth, event: NextFetchEvent) {
+        void request;
+        void event;
         return NextResponse.next();
       },
       {
@@ -27,12 +29,14 @@ const authProxy = isAuthGuardEnabled
         },
       },
     )
-  : function proxy(_req: NextRequest) {
+  : function proxy(request: NextRequest, event: NextFetchEvent) {
+      void request;
+      void event;
       return NextResponse.next();
     };
 
-export function proxy(request: NextRequest) {
-  return authProxy(request);
+export function proxy(request: NextRequest, event: NextFetchEvent) {
+  return authProxy(request as NextRequestWithAuth, event);
 }
 
 export const config = {
