@@ -32,10 +32,14 @@ function formatDate(value?: string) {
   });
 }
 
-function formatBytes(size?: number) {
-  if (size === undefined || size === null || Number.isNaN(size)) return '-';
+function formatBytes(size?: number | string) {
+  if (size === undefined || size === null || size === '') return '-';
+
+  const numericSize = typeof size === 'string' ? Number(size) : size;
+  if (Number.isNaN(numericSize)) return '-';
+
   const units = ['B', 'KB', 'MB', 'GB'];
-  let value = size;
+  let value = numericSize;
   let unitIndex = 0;
   while (value >= 1024 && unitIndex < units.length - 1) {
     value /= 1024;
@@ -265,44 +269,71 @@ export function RequestDetailsModal({
             {request.documents?.length ? (
               <SectionCard title="Documentos anexados">
                 <div className="space-y-2">
-                  {request.documents.map((document: RequestDocument) => (
-                    <div
-                      key={document.documentId || document.name}
-                      className="flex flex-col gap-2 rounded border border-border bg-background p-3 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">
-                          {document.name || 'Documento sem nome'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {document.type || 'Arquivo'} ·{' '}
-                          {formatBytes(document.size)} ·{' '}
-                          {formatDate(document.uploadedAt)}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          onDownloadDocument(document.documentId || '')
-                        }
-                        disabled={
-                          downloadingDocumentId ===
-                            (document.documentId || '') || !document.documentId
-                        }
+                  {request.documents.map((document: RequestDocument, index) => {
+                    const documentId = document.documentId || '';
+                    const downloadUrl = document.downloadUrl || '';
+                    const canDownloadDocument = Boolean(
+                      downloadUrl || documentId,
+                    );
+                    const documentKey = [
+                      documentId,
+                      document.name || 'documento',
+                      index,
+                    ]
+                      .filter(Boolean)
+                      .join('-');
+
+                    const handleDocumentDownload = () => {
+                      if (downloadUrl) {
+                        window.open(
+                          downloadUrl,
+                          '_blank',
+                          'noopener,noreferrer',
+                        );
+                        return;
+                      }
+
+                      if (documentId) {
+                        onDownloadDocument(documentId);
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={documentKey}
+                        className="flex flex-col gap-2 rounded border border-border bg-background p-3 md:flex-row md:items-center md:justify-between"
                       >
-                        {downloadingDocumentId ===
-                        (document.documentId || '') ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Download size={14} />
-                        )}
-                        {downloadingDocumentId === (document.documentId || '')
-                          ? 'Baixando...'
-                          : 'Baixar'}
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {document.name || 'Documento sem nome'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {document.type || 'Arquivo'} ·{' '}
+                            {formatBytes(document.size)} ·{' '}
+                            {formatDate(document.uploadedAt)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDocumentDownload}
+                          disabled={
+                            downloadingDocumentId === documentId ||
+                            !canDownloadDocument
+                          }
+                        >
+                          {downloadingDocumentId === documentId ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Download size={14} />
+                          )}
+                          {downloadingDocumentId === documentId
+                            ? 'Baixando...'
+                            : 'Baixar'}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </SectionCard>
             ) : null}
