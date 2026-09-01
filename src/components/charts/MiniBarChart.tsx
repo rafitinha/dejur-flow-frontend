@@ -3,11 +3,29 @@ import { cn } from '@/lib/utils/cn';
 export function MiniBarChart({
   values,
   labels,
+  loading = false,
 }: {
   values: number[];
   labels: string[];
+  loading?: boolean;
 }) {
   const max = Math.max(...values, 1);
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={`chart-skeleton-${index}`} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="skeleton-premium h-3 w-28 animate-pulse-soft rounded-md" />
+              <div className="skeleton-premium h-3 w-8 animate-pulse-soft rounded-md" />
+            </div>
+            <div className="skeleton-premium h-2.5 animate-pulse-soft rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

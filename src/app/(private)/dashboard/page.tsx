@@ -13,7 +13,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { MiniBarChart } from '@/components/charts/MiniBarChart';
-import { DashboardMetricGrid } from '@/components/dashboard/cards';
+import {
+  DashboardMetricGrid,
+  getDashboardChecklistLabels,
+  getDashboardChecklistValues,
+} from '@/components/dashboard/cards';
 import { RequestDetailsModal } from '@/components/requests/RequestDetailsModal';
 import { Button, buttonVariants } from '@/components/ui/Button';
 import {
@@ -29,8 +33,11 @@ import {
   exportRequestCsv,
   exportRequestExcel,
   exportRequestPdf,
+  getDashboardSummary,
   getRequestById,
   listMyRequests,
+  PeriodType,
+  type JudicialDashboardSummaryResponse,
 } from '@/features/requests/api';
 import {
   formatRequestDetailsForClipboard,
@@ -50,7 +57,10 @@ export default function DashboardPage() {
   const accessToken = session?.accessToken;
 
   const [items, setItems] = useState<JudicialRequestListItem[]>([]);
+  const [dashboardSummary, setDashboardSummary] =
+    useState<JudicialDashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null,
   );
@@ -72,6 +82,37 @@ export default function DashboardPage() {
     message: string;
   } | null>(null);
   const latestRequestRequestRef = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDashboardSummary() {
+      setDashboardLoading(true);
+
+      try {
+        const data = await getDashboardSummary(
+          PeriodType.LAST_7_DAYS,
+          accessToken,
+        );
+        if (!active) return;
+        setDashboardSummary(data);
+      } catch {
+        if (active) {
+          setDashboardSummary(null);
+        }
+      } finally {
+        if (active) {
+          setDashboardLoading(false);
+        }
+      }
+    }
+
+    void loadDashboardSummary();
+
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
 
   useEffect(() => {
     let active = true;
@@ -264,8 +305,7 @@ export default function DashboardPage() {
           <p className="text-label">Painel Operacional</p>
           <h1 className="text-heading">Dashboard Judicial</h1>
           <p className="text-body mt-1">
-            Visão em tempo real de solicitações, performance de análise e fluxo
-            de aprovação.
+            Acompanhe as solicitações, análises e o fluxo de aprovação.
           </p>
         </div>
         <Link
@@ -276,58 +316,28 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <DashboardMetricGrid />
+      <DashboardMetricGrid
+        summary={dashboardSummary}
+        loading={dashboardLoading}
+      />
 
-      <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-5 xl:grid-cols-[1fr]">
         <Card>
           <CardHeader>
             <div>
               <CardTitle>Distribuição por tipo de checklist</CardTitle>
               <CardDescription>
-                Proporção das entradas na última semana.
+                {dashboardSummary
+                  ? `Proporção das entradas em ${dashboardSummary.period.type === 'LAST_7_DAYS' ? 'últimos 7 dias' : dashboardSummary.period.type.toLowerCase()}.`
+                  : 'Carregando proporção dos checklists...'}
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             <MiniBarChart
-              labels={[
-                'Multa contratual',
-                'Cobrança de títulos',
-                'Recuperação vasilhames',
-              ]}
-              values={[34, 21, 13]}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Indicadores de qualidade</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InsightRow
-              icon={<Brain size={15} />}
-              label="Confiabilidade LLM"
-              value="94,2%"
-              tone="info"
-            />
-            <InsightRow
-              icon={<TrendingUp size={15} />}
-              label="SLA médio"
-              value="3h 12m"
-              tone="success"
-            />
-            <InsightRow
-              icon={<Sparkles size={15} />}
-              label="Aprovações automáticas"
-              value="76%"
-              tone="primary"
-            />
-            <InsightRow
-              icon={<FileText size={15} />}
-              label="Documentos pendentes"
-              value="9"
-              tone="warning"
+              loading={dashboardLoading}
+              labels={getDashboardChecklistLabels(dashboardSummary)}
+              values={getDashboardChecklistValues(dashboardSummary)}
             />
           </CardContent>
         </Card>
@@ -374,7 +384,24 @@ export default function DashboardPage() {
           ) : null}
 
           {loading ? (
-            <p className="text-body">Carregando solicitações...</p>
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={`recent-requests-skeleton-${index}`}
+                  className="flex flex-col gap-3 rounded-md border border-border/80 bg-background/40 p-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="skeleton-premium h-4 w-28 animate-pulse-soft rounded-md" />
+                    <div className="skeleton-premium h-3 w-52 animate-pulse-soft rounded-md" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-premium h-6 w-20 animate-pulse-soft rounded-full" />
+                    <div className="skeleton-premium h-9 w-24 animate-pulse-soft rounded-md" />
+                    <div className="skeleton-premium h-9 w-20 animate-pulse-soft rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : items.length === 0 ? (
             <p className="text-body text-muted-foreground">
               Nenhuma solicitação recente encontrada.

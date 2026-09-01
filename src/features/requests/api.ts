@@ -22,6 +22,71 @@ export type ApiUser = {
   email: string;
 };
 
+export enum PeriodType {
+  TODAY = 'TODAY',
+  LAST_7_DAYS = 'LAST_7_DAYS',
+  LAST_30_DAYS = 'LAST_30_DAYS',
+  CUSTOM = 'CUSTOM',
+}
+
+export enum ComparisonPeriod {
+  YESTERDAY = 'YESTERDAY',
+  PREVIOUS_PERIOD = 'PREVIOUS_PERIOD',
+  PREVIOUS_WEEK = 'PREVIOUS_WEEK',
+  PREVIOUS_MONTH = 'PREVIOUS_MONTH',
+}
+
+export enum ChecklistType {
+  CONTRACTUAL_FINE = 'CONTRACTUAL_FINE',
+  TITLE_COLLECTION = 'TITLE_COLLECTION',
+  CONTAINER_RECOVERY = 'CONTAINER_RECOVERY',
+}
+
+export interface DashboardPeriod {
+  type: PeriodType;
+  startDate: string;
+  endDate: string;
+}
+
+export interface UnderAiAnalysisIndicator {
+  count: number;
+  variation: number;
+  comparisonPeriod: ComparisonPeriod;
+}
+
+export interface ApprovedIndicator {
+  count: number;
+  approvalRate: number;
+  comparisonPeriod: ComparisonPeriod;
+}
+
+export interface RejectedIndicator {
+  count: number;
+  hasReasonsForReview: boolean;
+  comparisonPeriod: ComparisonPeriod;
+}
+
+export interface DashboardIndicators {
+  underAiAnalysis: UnderAiAnalysisIndicator;
+  approved: ApprovedIndicator;
+  rejected: RejectedIndicator;
+}
+
+export interface ChecklistTypeDistribution {
+  type: ChecklistType;
+  description: string;
+  count: number;
+  percentage: number;
+}
+
+export interface JudicialDashboardSummaryResponse {
+  period: DashboardPeriod;
+  indicators: DashboardIndicators;
+  checklistTypeDistribution: ChecklistTypeDistribution[];
+  totalChecklists: number;
+  lastUpdatedAt: string;
+}
+
 export type ListMyRequestsFilters = {
   status?: string;
   startDate?: string;
@@ -49,6 +114,22 @@ export async function listUsers(accessToken?: string): Promise<ApiUser[]> {
 
   if (!r.ok) throw new Error('Erro ao consultar usuários');
   return r.json() as Promise<ApiUser[]>;
+}
+
+export async function getDashboardSummary(
+  periodType: PeriodType = PeriodType.LAST_7_DAYS,
+  accessToken?: string,
+): Promise<JudicialDashboardSummaryResponse> {
+  const query = new URLSearchParams({ periodType });
+  const endpoint = `${baseUrl}/api/v1/dashboard/summary?${query.toString()}`;
+
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!r.ok) throw new Error('Erro ao consultar resumo do dashboard');
+  return r.json() as Promise<JudicialDashboardSummaryResponse>;
 }
 
 // ---------------------------------------------------------------------------

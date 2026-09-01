@@ -58,12 +58,14 @@ export function MetricCard({
   trend,
   icon,
   tone = 'default',
+  loading = false,
 }: {
   title: string;
   value: string;
   trend?: string;
   icon?: ReactNode;
   tone?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+  loading?: boolean;
 }) {
   const toneClass = {
     default: 'bg-muted text-muted-foreground',
@@ -89,10 +91,19 @@ export function MetricCard({
         )}
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-semibold tracking-tight text-foreground">
-          {value}
-        </p>
-        {trend && <p className="text-caption">{trend}</p>}
+        {loading ? (
+          <div className="skeleton-premium h-10 w-24 animate-pulse-soft rounded-md" />
+        ) : (
+          <p className="text-3xl font-semibold tracking-tight text-foreground">
+            {value}
+          </p>
+        )}
+        {trend &&
+          (loading ? (
+            <div className="skeleton-premium mt-2 h-4 w-24 animate-pulse-soft rounded-md" />
+          ) : (
+            <p className="text-caption">{trend}</p>
+          ))}
       </CardContent>
     </Card>
   );
