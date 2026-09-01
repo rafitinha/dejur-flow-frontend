@@ -1,6 +1,11 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowRight, Building2, Sparkles } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { buttonVariants } from '@/components/ui/Button';
 import {
   Card,
@@ -13,6 +18,15 @@ import {
 import { CookieConsentClient } from '@/features/privacy/CookieConsentClient';
 
 export default function HomePage() {
+  const router = useRouter();
+  const { status } = useSession();
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/dashboard');
+    }
+  }, [router, status]);
+
   return (
     <main className="min-h-screen px-6 py-16 md:px-8">
       <section className="mx-auto max-w-5xl">
