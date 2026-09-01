@@ -1,26 +1,23 @@
 services:
-  frontend:
+  dejur-flow-front:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: validador-acoes-judiciais-frontend
+    image: niiadev/dejur-flow-front:latest
+    container_name: dejur-flow-front
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '${PORT}:${PORT}'
     env_file:
       - .env
-    environment:
-      NEXT_PUBLIC_BACKEND_URL: http://backend-mock:8080
-      NEXT_PUBLIC_MOCK_API: "false"
-    depends_on:
-      - backend-mock
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:${PORT} || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - flowise
 
-  backend-mock:
-    image: node:22-alpine
-    container_name: validador-acoes-judiciais-backend-mock
-    working_dir: /mock
-    volumes:
-      - ./scripts:/mock/scripts
-      - ./docs/openapi:/mock/docs/openapi
-    command: ["node", "scripts/mock-api-server.mjs"]
-    ports:
-      - "8080:8080"
+networks:
+  flowise:
+    external: true

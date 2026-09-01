@@ -1,61 +1,198 @@
+# TODO: Configurar CI GITLAB
+# chown -R gitlab-runner:gitlab-runner dejur-flow-front
+
 stages:
-  - install
-  - lint
-  - test
-  - build
-  - docker
+  - prepare
+  - git_update
+  - docker_build
+  - deploy
+  - clean_images
 
 variables:
-  NODE_VERSION: "22"
-  DOCKER_TLS_CERTDIR: ""
+  DOCKER_IMAGE: 'niiadev/dejur-flow-front'
+  VERSION: '3.1.${CI_PIPELINE_IID}'
+  DEPLOY_REPO_DIR: '/home/usrpamadmdev/develop/dejur/dejur-flow-front'
+  GITLAB_TOKEN: 'HMvs9mDXfjSNVvkbzbB7'
+  GITLAB_REPO_URL: 'http://oauth2:HMvs9mDXfjSNVvkbzbB7@gitlab.geq.com.br/niia/dejur/dejur-flow-front.git'
+  BRANCH_TARGET: 'ci/parallel-process'
 
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - node_modules/
-
-install:
-  stage: install
-  image: node:${NODE_VERSION}-alpine
-  script:
-    - npm install
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: 1 hour
-
-lint_typecheck:
-  stage: lint
-  image: node:${NODE_VERSION}-alpine
-  script:
-    - npm run lint
-    - npm run type-check
-
-unit_tests:
-  stage: test
-  image: node:${NODE_VERSION}-alpine
-  script:
-    - npm run test
-
-build_next:
-  stage: build
-  image: node:${NODE_VERSION}-alpine
-  script:
-    - npm run build
-  artifacts:
-    paths:
-      - .next/
-    expire_in: 1 day
-
-docker_build:
-  stage: docker
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+# 🔄 0. Iniciando Repo
+prepare_repository:
+  stage: prepare
+  tags:
+    - shell
+    - deploy
   only:
-    - main
-    - develop
+    - ci/parallel-process
+  script:
+    - echo "Checking deploy directory..."
+
+    # Verifica se variável está definida
+    - |
+      if [ -z "$DEPLOY_REPO_DIR" ]; then
+        echo "ERROR: DEPLOY_REPO_DIR is not defined"
+        exit 1
+      fi
+
+    # Cria diretório se não existir
+    - |
+      if [ ! -d "$DEPLOY_REPO_DIR" ]; then
+        echo "Directory does not exist. Creating..."
+        mkdir -p "$DEPLOY_REPO_DIR"
+      fi
+
+    # Verifica se já é um repositório git
+    - |
+      if [ ! -d "$DEPLOY_REPO_DIR/.git" ]; then
+        echo "Repository not found. Cloning..."
+        git clone "$GITLAB_REPO_URL" "$DEPLOY_REPO_DIR"
+      fi
+
+# 🔄 1. Atualiza o projeto no servidor (Git)
+git_update:
+  stage: git_update
+  needs:
+    - prepare_repository
+  tags:
+    - shell
+    - deploy
+  only:
+    - ci/parallel-process
+  resource_group: dejur-flow-front
+  before_script:
+    - git config --global --add safe.directory "$DEPLOY_REPO_DIR"
+  script:
+    - echo "🔄 Atualizando repositório no servidor..."
+    - whoami
+    - hostname
+    - cd "$DEPLOY_REPO_DIR"
+    - git fetch origin
+    - git reset --hard "origin/$BRANCH_TARGET"
+    - echo "✅ Repositório atualizado com sucesso"
+
+# 🐳 2. Build da imagem Docker
+docker_build:
+  stage: docker_build
+  tags:
+    - shell
+    - deploy
+  only:
+    - ci/parallel-process
+  needs:
+    - git_update
+  when: on_success
+  resource_group: dejur-flow-front
+  script:
+    - echo "🐳 Build da imagem $DOCKER_IMAGE:$VERSION"
+    - BUILD_DATE=$(date "+%d/%m/%Y - %H:%M:%S")
+    - |
+      docker build \
+        --build-arg APP_VERSION=$VERSION \
+        --build-arg GIT_COMMIT=$CI_COMMIT_SHORT_SHA \
+        --build-arg GIT_BRANCH=$CI_COMMIT_REF_NAME \
+        --build-arg BUILD_DATE="$BUILD_DATE" \
+        --build-arg NEXT_PUBLIC_APP_NAME="$NEXT_PUBLIC_APP_NAME" \
+        --build-arg NEXT_PUBLIC_BACKEND_URL="$NEXT_PUBLIC_BACKEND_URL" \
+        --build-arg NEXT_PUBLIC_API_BASE_URL="$NEXT_PUBLIC_API_BASE_URL" \
+        --build-arg NEXT_PUBLIC_MOCK_API="$NEXT_PUBLIC_MOCK_API" \
+        --build-arg NEXT_PUBLIC_ALLOWED_FILE_EXTENSIONS="$NEXT_PUBLIC_ALLOWED_FILE_EXTENSIONS" \
+        --build-arg NEXT_PUBLIC_MAX_TOTAL_UPLOAD_MB="$NEXT_PUBLIC_MAX_TOTAL_UPLOAD_MB" \
+        --build-arg NEXT_PUBLIC_ENABLE_AUTH_GUARD="$NEXT_PUBLIC_ENABLE_AUTH_GUARD" \
+        --label "org.opencontainers.image.title=Dejur Flow" \
+        --label "org.opencontainers.image.description=FrontEnd Dejur Flow" \
+        --label "org.opencontainers.image.version=$VERSION" \
+        --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+        --label "org.opencontainers.image.created=$BUILD_DATE" \
+        --label "org.opencontainers.image.source=$CI_PROJECT_URL" \
+        --label "org.opencontainers.image.url=$CI_PROJECT_URL" \
+        --label "org.opencontainers.image.documentation=$CI_PROJECT_URL/-/blob/$CI_COMMIT_REF_NAME/README.md" \
+        --label "org.opencontainers.image.vendor=NIIA" \
+        --label "org.opencontainers.image.licenses=ISC" \
+        --label "br.com.niia.dejurFlowFront.git.branch=$CI_COMMIT_REF_NAME" \
+        --label "br.com.niia.dejurFlowFront.pipeline.id=$CI_PIPELINE_ID" \
+        --label "br.com.niia.dejurFlowFront.pipeline.iid=$CI_PIPELINE_IID" \
+        --label "br.com.niia.dejurFlowFront.job.id=$CI_JOB_ID" \
+        -t $DOCKER_IMAGE:$VERSION .
+    - docker tag $DOCKER_IMAGE:$VERSION $DOCKER_IMAGE:latest
+
+# 🚀 3. Deploy no servidor de destino (Docker)
+deploy_master:
+  stage: deploy
+  tags:
+    - shell
+    - deploy
+  only:
+    - ci/parallel-process
+  needs:
+    - docker_build
+  when: on_success
+  resource_group: dejur-flow-front
+  script:
+    - echo "🚀 Deploy iniciado..."
+    - whoami
+    - hostname
+    - echo "🌿 Branch atual -> $CI_COMMIT_REF_NAME"
+    - echo "🔖 Commit -> $CI_COMMIT_SHORT_SHA"
+    - cd "$DEPLOY_REPO_DIR"
+
+    - echo "🌿 Checkout Branch -> $BRANCH_TARGET"
+    - git checkout "$BRANCH_TARGET"
+
+    - echo "📦 Iniciando processo de redeploy da aplicação via Docker Compose"
+    - docker compose down
+    - docker compose up -d
+    - |
+      echo "⏳ Aguardando container dejur-flow-front ficar saudável..."
+      for i in {1..30}; do
+        STATUS=$(docker inspect --format='{{.State.Health.Status}}' dejur-flow-front)
+        echo "Status atual: $STATUS"
+        [ "$STATUS" = "healthy" ] && break
+        sleep 5
+      done
+
+      if [ "$STATUS" != "healthy" ]; then
+        echo "❌ Container não ficou saudável"
+        docker logs dejur-flow-front
+        exit 1
+      fi
+    - echo "✅ Deploy finalizado com sucesso"
+
+# 🧹 4. Limpando imagens Docker
+clean_images:
+  stage: clean_images
+  tags:
+    - shell
+    - deploy
+  only:
+    - ci/parallel-process
+  needs:
+    - deploy_master
+  when: on_success
+  resource_group: dejur-flow-front
+  script:
+    - echo "🧹 Limpando imagens Docker antigas (mantendo versão atual e latest) [$DOCKER_IMAGE]"
+    - echo "➡️ Versão Atual --> $VERSION"
+
+    - |
+      if [ -z "$VERSION" ]; then
+        echo "❌ VERSION não definida. Abortando limpeza."
+        exit 1
+      fi
+
+    # 🔍 Preview das imagens que serão removidas
+    - |
+      echo "🧾 Imagens que serão removidas:"
+      docker images "$DOCKER_IMAGE" --format "{{.Repository}}:{{.Tag}}" \
+      | grep -v ":$VERSION$" \
+      | grep -v ":latest$" || true
+
+    # 🗑️ Remoção das imagens antigas
+    - |
+      docker images "$DOCKER_IMAGE" --format "{{.Repository}}:{{.Tag}}" \
+      | grep -v ":$VERSION$" \
+      | grep -v ":latest$" \
+      | xargs -r docker rmi || true
+
+    # 🧼 Limpeza de imagens dangling
+    - echo "🧹 Removendo imagens Docker dangling"
+    - docker image prune -f
