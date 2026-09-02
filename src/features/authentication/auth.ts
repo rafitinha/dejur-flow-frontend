@@ -4,6 +4,7 @@ import AzureADProvider from 'next-auth/providers/azure-ad';
 import type { Role } from '@/features/requests/types';
 
 export const REFRESH_ACCESS_TOKEN_ERROR = 'RefreshAccessTokenError' as const;
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 10 * 60 * 1000;
 
 export function mapGroupsToRoles(groups: string[]): Role[] {
   const roles = new Set<Role>(['USER']);
@@ -12,6 +13,14 @@ export function mapGroupsToRoles(groups: string[]): Role[] {
   if (dejur && groups.includes(dejur)) roles.add('DEJUR');
   if (admin && groups.includes(admin)) roles.add('ADMIN');
   return [...roles];
+}
+
+export function shouldRefreshAccessToken(
+  token: JWT,
+  now = Date.now(),
+): boolean {
+  if (!token.accessTokenExpires) return false;
+  return now + ACCESS_TOKEN_REFRESH_BUFFER_MS >= token.accessTokenExpires;
 }
 
 export async function refreshAccessToken(token: JWT): Promise<JWT> {
@@ -52,7 +61,12 @@ export async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch {
-    return { ...token, error: REFRESH_ACCESS_TOKEN_ERROR };
+    return {
+      ...token,
+      accessToken: undefined,
+      refreshToken: undefined,
+      error: REFRESH_ACCESS_TOKEN_ERROR,
+    };
   }
 }
 
@@ -88,10 +102,17 @@ export async function updateAuthToken({
       department: read('department'),
       companyName: read('companyName'),
     };
-  } else if (token.accessTokenExpires && now >= token.accessTokenExpires) {
+  } else if (token.accessTokenExpires && shouldRefreshAccessToken(token, now)) {
     token = await refreshAccessToken(token);
   }
+
   token.roles ??= ['USER'];
+  if (token.error === REFRESH_ACCESS_TOKEN_ERROR) {
+    token.groups = [];
+    token.jobTitle = undefined;
+    token.department = undefined;
+    token.companyName = undefined;
+  }
   return token;
 }
 
