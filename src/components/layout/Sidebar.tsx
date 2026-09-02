@@ -4,19 +4,28 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, FilePlus, Files, LayoutDashboard, Sparkles } from 'lucide-react';
+import {
+  Bell,
+  Building2,
+  FilePlus,
+  Files,
+  LayoutDashboard,
+  Sparkles,
+} from 'lucide-react';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { Profile } from '@/components/auth/Profile';
 import { cn } from '@/lib/utils/cn';
 import { useLayoutStore } from '@/stores/layout.store';
-
-const items = [
-  ['/dashboard', 'Dashboard', LayoutDashboard],
-  ['/solicitacoes/nova', 'Nova solicitação', FilePlus],
-  ['/solicitacoes', 'Solicitações', Files],
-] as const;
+import { usePermissions } from '@/hooks/usePermissions';
 
 export function Sidebar() {
+  const { canManageAll } = usePermissions();
+  const items = [
+    ['/dashboard', 'Dashboard', LayoutDashboard],
+    ['/solicitacoes/nova', 'Nova solicitação', FilePlus],
+    ['/solicitacoes', 'Solicitações', Files],
+    ...(canManageAll ? [['/entities', 'Entidades', Building2] as const] : []),
+  ] as const;
   const pathname = usePathname();
   const state = useLayoutStore((store) => store.sidebarState);
   const setState = useLayoutStore((store) => store.setSidebarState);

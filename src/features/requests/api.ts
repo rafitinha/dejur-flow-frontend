@@ -105,6 +105,48 @@ export type PaginatedResponse<T> = {
   totalCount: number;
 };
 
+export type EntityTaxIdType = 'CPF' | 'CNPJ';
+export type EntityStatus = 'ACTIVE' | 'INACTIVE';
+export type EntityType = 'ORGANIZATIONAL' | 'DEBTOR' | 'PHYSICAL_PERSON';
+
+export type EntityAddress = {
+  street: string;
+  number?: string | null;
+  complement?: string | null;
+  district: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+};
+
+export type Entity = {
+  id?: string;
+  name: string;
+  legalName: string;
+  taxId: string;
+  taxIdType: EntityTaxIdType;
+  address: EntityAddress;
+  status: EntityStatus;
+  type: EntityType;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+};
+
+export type EntityListFilters = {
+  name?: string;
+  taxId?: string;
+  taxIdType?: EntityTaxIdType;
+  type?: EntityType;
+  createdAt?: string;
+  updatedAt?: string;
+  limit?: number;
+  offset?: number;
+  index?: number;
+};
+
 export async function listUsers(accessToken?: string): Promise<ApiUser[]> {
   const endpoint = `${baseUrl}/api/v1/users`;
   const r = await fetch(endpoint, {
@@ -304,4 +346,106 @@ export async function updateRequest(
   });
   if (!r.ok) throw new Error('Erro ao atualizar solicitação');
   return r.json();
+}
+
+export async function listEntities(
+  filters: EntityListFilters = {},
+  accessToken?: string,
+): Promise<Entity[]> {
+  const query = new URLSearchParams();
+  if (filters.name) query.set('name', filters.name);
+  if (filters.taxId) query.set('taxId', filters.taxId);
+  if (filters.taxIdType) query.set('taxIdType', filters.taxIdType);
+  if (filters.type) query.set('type', filters.type);
+  if (filters.createdAt) query.set('createdAt', filters.createdAt);
+  if (filters.updatedAt) query.set('updatedAt', filters.updatedAt);
+  if (filters.limit !== undefined) query.set('limit', String(filters.limit));
+  if (filters.offset !== undefined) query.set('offset', String(filters.offset));
+  if (filters.index !== undefined) query.set('index', String(filters.index));
+
+  const endpoint = `${baseUrl}/api/v1/entities${query.toString() ? `?${query.toString()}` : ''}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!r.ok) throw new Error('Erro ao consultar entidades');
+  const body = await r.json();
+
+  if (Array.isArray(body)) {
+    return body as Entity[];
+  }
+
+  if (body && Array.isArray(body.items)) {
+    return body.items as Entity[];
+  }
+
+  return [];
+}
+
+export async function getEntityById(
+  entityId: string,
+  accessToken?: string,
+): Promise<Entity> {
+  const endpoint = `${baseUrl}/api/v1/entities/${entityId}`;
+  const r = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!r.ok) throw new Error('Erro ao consultar entidade');
+  return r.json() as Promise<Entity>;
+}
+
+export async function createEntity(
+  payload: Partial<Entity>,
+  accessToken?: string,
+): Promise<Entity> {
+  const r = await fetch(`${baseUrl}/api/v1/entities`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildHeaders(accessToken),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r.ok) throw new Error('Erro ao criar entidade');
+  return r.json() as Promise<Entity>;
+}
+
+export async function updateEntity(
+  entityId: string,
+  payload: Partial<Entity>,
+  accessToken?: string,
+): Promise<Entity> {
+  const r = await fetch(`${baseUrl}/api/v1/entities/${entityId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildHeaders(accessToken),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r.ok) throw new Error('Erro ao atualizar entidade');
+  return r.json() as Promise<Entity>;
+}
+
+export async function patchEntityStatus(
+  entityId: string,
+  status: EntityStatus,
+  accessToken?: string,
+): Promise<Entity> {
+  const r = await fetch(`${baseUrl}/api/v1/entities/${entityId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildHeaders(accessToken),
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!r.ok) throw new Error('Erro ao atualizar status da entidade');
+  return r.json() as Promise<Entity>;
 }

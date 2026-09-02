@@ -24,8 +24,9 @@ export function Select({
       disabled={disabled}
     >
       <SelectPrimitive.Trigger
+        type="button"
         className={cn(
-          'field-base flex items-center justify-between gap-2',
+          'field-base flex items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
           status === 'error' && 'field-error',
           status === 'warning' && 'field-warning',
           status === 'success' && 'field-success',
@@ -37,13 +38,17 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-50 overflow-hidden rounded-md border border-border bg-card text-foreground shadow-lg">
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={6}
+          className="z-[70] max-h-80 overflow-hidden rounded-md border border-border bg-card text-foreground shadow-lg"
+        >
           <SelectPrimitive.Viewport className="p-1">
             {options.map((item) => (
               <SelectPrimitive.Item
                 key={item.value}
                 value={item.value}
-                className="relative flex cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-hover focus:bg-hover"
+                className="relative flex cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-hover focus:bg-hover data-[highlighted]:bg-hover"
               >
                 <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex items-center">
                   <Check size={14} />

@@ -1,3 +1,26 @@
+export function isValidCpf(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false;
+
+  const calculate = (digitsToCheck: string, factorStart: number) => {
+    let sum = 0;
+    let factor = factorStart;
+
+    for (let index = 0; index < digitsToCheck.length; index += 1) {
+      sum += Number(digitsToCheck[index]) * factor;
+      factor -= 1;
+    }
+
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const digit1 = calculate(digits.slice(0, 9), 10);
+  const digit2 = calculate(digits.slice(0, 9) + String(digit1), 11);
+
+  return digits[9] === String(digit1) && digits[10] === String(digit2);
+}
+
 export function isValidCnpj(value: string): boolean {
   const digits = value.replace(/\D/g, '');
   if (digits.length !== 14 || /^(\d)\1{13}$/.test(digits)) return false;
@@ -14,6 +37,13 @@ export function isValidCnpj(value: string): boolean {
   return (
     calculate(12) === Number(digits[12]) && calculate(13) === Number(digits[13])
   );
+}
+
+export function isValidTaxId(value: string, type: 'CPF' | 'CNPJ') {
+  const digits = value.replace(/\D/g, '');
+  return type === 'CPF'
+    ? digits.length === 11 && isValidCpf(digits)
+    : digits.length === 14 && isValidCnpj(digits);
 }
 
 export function formatDocument(value: string): string {
