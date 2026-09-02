@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { z } from 'zod';
+import { Search } from 'lucide-react';
 import { getCities, getStates } from '@brazilian-utils/brazilian-utils';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +17,7 @@ import type {
   EntityType,
 } from '@/features/requests/api';
 import { lookupPostalCode } from '@/features/address/cep';
+import { consultarCnpj, CnpjLookupError } from '@/services/cnpjService';
 import { isValidTaxId } from '@/lib/utils/cnpj';
 import { cn } from '@/lib/utils/cn';
 
@@ -76,20 +78,34 @@ const emptyForm: EntityFormValues = {
     city: '',
     state: '',
     postalCode: '',
-    country: 'Brazil',
+    country: 'Brasil',
   },
 };
 
 function formatTaxId(value: string, taxIdType: EntityTaxIdType) {
   const digits = value.replace(/\D/g, '');
+
   if (taxIdType === 'CPF') {
-    return digits
-      .slice(0, 11)
-      .replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    const compact = digits.slice(0, 11);
+    if (compact.length <= 3) return compact;
+    if (compact.length <= 6)
+      return `${compact.slice(0, 3)}.${compact.slice(3)}`;
+    if (compact.length <= 9) {
+      return `${compact.slice(0, 3)}.${compact.slice(3, 6)}.${compact.slice(6)}`;
+    }
+    return `${compact.slice(0, 3)}.${compact.slice(3, 6)}.${compact.slice(6, 9)}-${compact.slice(9, 11)}`;
   }
-  return digits
-    .slice(0, 14)
-    .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+
+  const compact = digits.slice(0, 14);
+  if (compact.length <= 2) return compact;
+  if (compact.length <= 5) return `${compact.slice(0, 2)}.${compact.slice(2)}`;
+  if (compact.length <= 8) {
+    return `${compact.slice(0, 2)}.${compact.slice(2, 5)}.${compact.slice(5)}`;
+  }
+  if (compact.length <= 12) {
+    return `${compact.slice(0, 2)}.${compact.slice(2, 5)}.${compact.slice(5, 8)}/${compact.slice(8)}`;
+  }
+  return `${compact.slice(0, 2)}.${compact.slice(2, 5)}.${compact.slice(5, 8)}/${compact.slice(8, 12)}-${compact.slice(12, 14)}`;
 }
 
 function formatPostalCode(value: string) {
@@ -118,9 +134,41 @@ function normalizeValues(raw: Partial<Entity>): EntityFormValues {
       city: raw.address?.city ?? '',
       state: raw.address?.state ?? '',
       postalCode: raw.address?.postalCode ?? '',
-      country: raw.address?.country ?? 'Brazil',
+      country: raw.address?.country ?? 'Brasil',
     },
   };
+}
+
+function splitStreetAndNumber(
+  streetValue: string,
+  numberValue?: string,
+): {
+  street: string;
+  number: string;
+} {
+  const street = (streetValue ?? '').trim();
+
+  if (!street) {
+    return { street: '', number: numberValue ?? '' };
+  }
+
+  const match = street.match(/^(.*?)(?:,|\s+)(\d+\w?)(?:\s*[-/].*)?$/i);
+  if (match) {
+    return {
+      street: match[1].trim(),
+      number: match[2].trim(),
+    };
+  }
+
+  const trailingNumberMatch = street.match(/^(.*?)(\d+\w?)$/i);
+  if (trailingNumberMatch && trailingNumberMatch[1].trim()) {
+    return {
+      street: trailingNumberMatch[1].trim(),
+      number: trailingNumberMatch[2].trim(),
+    };
+  }
+
+  return { street, number: numberValue ?? '' };
 }
 
 export function EntityModal({
@@ -143,6 +191,7 @@ export function EntityModal({
   );
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false);
+  const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
   const [isUfOpen, setIsUfOpen] = useState(false);
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [ufQuery, setUfQuery] = useState(initialValues?.address?.state ?? '');
@@ -151,6 +200,13 @@ export function EntityModal({
   );
   const [highlightedUfIndex, setHighlightedUfIndex] = useState(-1);
   const [highlightedCityIndex, setHighlightedCityIndex] = useState(-1);
+  const cnpjLookupAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cnpjLookupAbortRef.current?.abort();
+    };
+  }, []);
 
   const ufOptions = useMemo(
     () =>
@@ -199,6 +255,76 @@ export function EntityModal({
     setErrors({});
     setUfQuery(nextValues.address.state ?? '');
     setCityQuery(nextValues.address.city ?? '');
+  }
+
+  function applyCompanyData(result: {
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    situacaoCadastral?: string;
+    cep?: string;
+    tipoLogradouro?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
+    uf?: string;
+  }) {
+    setForm((current) => {
+      const normalizedStreet = result.logradouro || current.address.street;
+      const { street, number } = splitStreetAndNumber(
+        normalizedStreet,
+        result.numero || current.address.number || '',
+      );
+
+      const nextStreet = result.tipoLogradouro
+        ? `${result.tipoLogradouro} ${street}`.trim()
+        : street;
+
+      const nextState = (
+        result.uf ||
+        current.address.state ||
+        ''
+      ).toUpperCase();
+      const nextCity = result.cidade || current.address.city || '';
+      const nextPostalCode = formatPostalCode(
+        result.cep || current.address.postalCode || '',
+      );
+      const nextCountry = 'Brasil';
+
+      const nextStatus =
+        result.situacaoCadastral &&
+        /ativa|regular|habilitada|vinculada|em vigor/i.test(
+          result.situacaoCadastral,
+        )
+          ? 'ACTIVE'
+          : result.situacaoCadastral
+            ? 'INACTIVE'
+            : current.status;
+
+      const nextValues = {
+        ...current,
+        name: result.nomeFantasia || current.name,
+        legalName: result.razaoSocial || current.legalName,
+        status: nextStatus,
+        address: {
+          ...current.address,
+          street: nextStreet,
+          district: result.bairro || current.address.district,
+          city: nextCity,
+          state: nextState,
+          postalCode: nextPostalCode,
+          number: number || current.address.number || '',
+          complement: result.complemento || current.address.complement || '',
+          country: nextCountry,
+        },
+      };
+
+      setUfQuery(nextState);
+      setCityQuery(nextCity);
+      return nextValues;
+    });
   }
 
   const taxIdOptions = useMemo(
@@ -392,6 +518,61 @@ export function EntityModal({
     return true;
   }
 
+  async function handleCnpjLookup() {
+    const digits = form.taxId.replace(/\D/g, '');
+
+    if (digits.length !== 14) {
+      setErrors((current) => ({
+        ...current,
+        taxId: 'Informe um CNPJ válido.',
+      }));
+      return;
+    }
+
+    if (!isValidTaxId(digits, 'CNPJ')) {
+      setErrors((current) => ({
+        ...current,
+        taxId: 'Informe um CNPJ válido.',
+      }));
+      return;
+    }
+
+    cnpjLookupAbortRef.current?.abort();
+    const controller = new AbortController();
+    cnpjLookupAbortRef.current = controller;
+
+    try {
+      setIsLookingUpCnpj(true);
+      setErrors((current) => ({ ...current, taxId: undefined }));
+      const result = await consultarCnpj(digits, controller.signal);
+      applyCompanyData(result);
+      setErrors((current) => ({ ...current, taxId: undefined }));
+    } catch (error) {
+      if (error instanceof CnpjLookupError) {
+        const message =
+          error.code === 'CNPJ_INVALIDO'
+            ? 'Informe um CNPJ válido.'
+            : error.code === 'CNPJ_NAO_ENCONTRADO'
+              ? 'CNPJ não encontrado. Preencha os dados da empresa manualmente.'
+              : 'Não foi possível consultar o CNPJ neste momento. Você pode preencher os dados manualmente.';
+
+        setErrors((current) => ({
+          ...current,
+          taxId: message,
+        }));
+        return;
+      }
+
+      setErrors((current) => ({
+        ...current,
+        taxId:
+          'Não foi possível consultar o CNPJ neste momento. Você pode preencher os dados manualmente.',
+      }));
+    } finally {
+      setIsLookingUpCnpj(false);
+    }
+  }
+
   async function handlePostalCodeLookup() {
     const cep = form.address.postalCode.replace(/\D/g, '');
     if (cep.length !== 8) return;
@@ -401,19 +582,25 @@ export function EntityModal({
       const result = await lookupPostalCode(cep);
 
       if (!result) {
-        setForm((current) => ({
-          ...current,
-          address: {
-            ...current.address,
-            street: '',
-            district: '',
-            city: '',
-            state: '',
-            country: 'Brazil',
-            number: null,
-            complement: null,
-          },
-        }));
+        setForm((current) => {
+          const nextValues = {
+            ...current,
+            address: {
+              ...current.address,
+              street: '',
+              district: '',
+              city: '',
+              state: '',
+              country: 'Brasil',
+              number: null,
+              complement: null,
+            },
+          };
+
+          setUfQuery('');
+          setCityQuery('');
+          return nextValues;
+        });
 
         setErrors((current) => ({
           ...current,
@@ -427,21 +614,30 @@ export function EntityModal({
         return;
       }
 
-      setForm((current) => ({
-        ...current,
-        address: {
+      setForm((current) => {
+        const nextState = (result.state || current.address.state || '')
+          .toUpperCase()
+          .slice(0, 2);
+        const nextCity = result.city || current.address.city || '';
+        const nextAddress = {
           ...current.address,
           street: result.street || current.address.street,
           district: result.district || current.address.district,
-          city: result.city || current.address.city,
-          state: (result.state || current.address.state || '')
-            .toUpperCase()
-            .slice(0, 2),
-          country: result.country || current.address.country,
+          city: nextCity,
+          state: nextState,
+          country: 'Brasil',
           number: result.number ?? current.address.number ?? null,
           complement: null,
-        },
-      }));
+        };
+
+        setUfQuery(nextState);
+        setCityQuery(nextCity);
+
+        return {
+          ...current,
+          address: nextAddress,
+        };
+      });
 
       setErrors((current) => ({
         ...current,
@@ -535,16 +731,33 @@ export function EntityModal({
             <label className="text-caption text-muted-foreground">
               Documento
             </label>
-            <Input
-              value={form.taxId}
-              onChange={(event) => {
-                setField(
-                  'taxId',
-                  formatTaxId(event.target.value, form.taxIdType),
-                );
-              }}
-              status={errors.taxId ? 'error' : 'default'}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={form.taxId}
+                onChange={(event) => {
+                  const nextValue = formatTaxId(
+                    event.target.value,
+                    form.taxIdType,
+                  );
+                  setField('taxId', nextValue);
+                }}
+                status={errors.taxId ? 'error' : 'default'}
+              />
+              {form.taxIdType === 'CNPJ' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Consultar CNPJ"
+                  onClick={() => void handleCnpjLookup()}
+                  loading={isLookingUpCnpj}
+                  loadingText="..."
+                  className="shrink-0"
+                >
+                  <Search size={15} />
+                </Button>
+              )}
+            </div>
             {errors.taxId && (
               <p className="text-xs text-danger">{errors.taxId}</p>
             )}
