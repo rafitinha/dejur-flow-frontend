@@ -23,6 +23,7 @@ import {
   type EntityType,
 } from '@/features/requests/api';
 import { formatDocument } from '@/lib/utils/cnpj';
+import { useToast } from '@/components/ui/Toast';
 
 const taxTypeOptions = [
   { value: 'CPF', label: 'CPF' },
@@ -68,6 +69,7 @@ function normalizeDateFilter(value: string) {
 export default function EntitiesPage() {
   const { data: session, status } = useSession();
   const token = session?.accessToken;
+  const { showToast } = useToast();
 
   const [items, setItems] = useState<Entity[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -242,6 +244,11 @@ export default function EntitiesPage() {
       setModalOpen(false);
       setSelectedEntity(null);
       await loadEntities();
+      showToast({
+        title: 'Entidade salva com sucesso.',
+        description: 'A entidade foi cadastrada com sucesso.',
+        variant: 'success',
+      });
     } catch {
       setError('Não foi possível criar a entidade.');
     } finally {
@@ -257,6 +264,11 @@ export default function EntitiesPage() {
       setModalOpen(false);
       setSelectedEntity(null);
       await loadEntities();
+      showToast({
+        title: 'Entidade atualizada com sucesso.',
+        description: 'As alterações da entidade foram salvas.',
+        variant: 'success',
+      });
     } catch {
       setError('Não foi possível atualizar a entidade.');
     } finally {

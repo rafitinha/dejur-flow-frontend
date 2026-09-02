@@ -47,7 +47,7 @@ class ViaCepProvider implements PostalCodeProvider {
       state: payload.uf ?? '',
       country: 'Brazil',
       number: null,
-      complement: payload.complemento ?? null,
+      complement: null,
     };
   }
 }
@@ -86,7 +86,7 @@ class BrasilApiProvider implements PostalCodeProvider {
       state: payload.state ?? '',
       country: 'Brazil',
       number: null,
-      complement: payload.complement ?? null,
+      complement: null,
     };
   }
 }

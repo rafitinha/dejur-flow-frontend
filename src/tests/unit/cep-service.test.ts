@@ -37,6 +37,32 @@ describe('cep service', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('ignores complement data returned by the CEP provider', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          logradouro: 'Rua Example',
+          bairro: 'Centro',
+          localidade: 'Fortaleza',
+          uf: 'CE',
+          complemento: 'de 1941 a 2491 - lado ímpar',
+        }),
+      }),
+    );
+
+    await expect(lookupPostalCode('60165000')).resolves.toMatchObject({
+      street: 'Rua Example',
+      district: 'Centro',
+      city: 'Fortaleza',
+      state: 'CE',
+      country: 'Brazil',
+      number: null,
+      complement: null,
+    });
+  });
+
   it('returns null when all providers fail', async () => {
     vi.stubGlobal(
       'fetch',

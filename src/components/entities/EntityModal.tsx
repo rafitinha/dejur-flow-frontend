@@ -297,7 +297,7 @@ export function EntityModal({
             .slice(0, 2),
           country: result.country || current.address.country,
           number: result.number ?? current.address.number ?? null,
-          complement: result.complement ?? current.address.complement ?? null,
+          complement: null,
         },
       }));
 
@@ -485,8 +485,13 @@ export function EntityModal({
               <Input
                 value={form.address.number ?? ''}
                 onChange={(event) =>
-                  setAddressField('number', event.target.value)
+                  setAddressField(
+                    'number',
+                    formatAddressNumber(event.target.value),
+                  )
                 }
+                inputMode="numeric"
+                pattern="[0-9]*"
               />
             </div>
 
