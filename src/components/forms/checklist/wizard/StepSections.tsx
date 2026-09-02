@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { getCities } from '@brazilian-utils/brazilian-utils';
+import { useSession } from 'next-auth/react';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { RadioGroup } from '@/components/ui/Radio';
@@ -8,7 +9,15 @@ import { Textarea } from '@/components/ui/Textarea';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Combobox } from '@/components/ui/Combobox';
 import { Switch } from '@/components/ui/Switch';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { ChecklistType } from '@/features/requests/types';
+import {
+  listEntities,
+  type Entity,
+  type EntityType,
+} from '@/features/requests/api';
+import { formatDocument } from '@/lib/utils/cnpj';
 import { cn } from '@/lib/utils/cn';
 import {
   formatCnpj,
@@ -140,6 +149,153 @@ const financialIndexOptions = [
   'Taxa de Juros',
 ];
 
+function EntitySearchModal({
+  open,
+  entityType,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  entityType: EntityType;
+  onClose: () => void;
+  onSelect: (entity: Entity) => void;
+}) {
+  const { data: session } = useSession();
+  const token = session?.accessToken;
+  const [query, setQuery] = useState('');
+  const [items, setItems] = useState<Entity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize] = useState(10);
+
+  useEffect(() => {
+    if (!open || !token) {
+      setItems([]);
+      setError(null);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const normalized = query.trim();
+        const searchFilters = {
+          type: entityType,
+          limit: pageSize,
+          offset: pageIndex * pageSize,
+          ...(normalized
+            ? /\d/.test(normalized)
+              ? { taxId: normalized.replace(/\D/g, '') }
+              : { name: normalized }
+            : {}),
+        };
+
+        const response = await listEntities(searchFilters, token);
+        setItems(response ?? []);
+      } catch {
+        setItems([]);
+        setError('Não foi possível carregar as entidades.');
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [entityType, open, pageIndex, pageSize, query, token]);
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      title={
+        entityType === 'ORGANIZATIONAL'
+          ? 'Buscar empresa GEQ'
+          : 'Buscar devedora'
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          value={query}
+          onChange={(event) => {
+            setPageIndex(0);
+            setQuery(event.target.value);
+          }}
+          placeholder="Digite o nome ou CNPJ para pesquisar"
+        />
+
+        {error && <p className="text-xs text-danger">{error}</p>}
+
+        {loading ? (
+          <div className="space-y-2">
+            <div className="skeleton-premium h-10 w-full rounded-md" />
+            <div className="skeleton-premium h-10 w-full rounded-md" />
+          </div>
+        ) : items.length === 0 ? (
+          <p className="rounded-md border border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+            Nenhuma entidade encontrada.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-border">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-3 py-2 font-medium text-foreground">
+                    Nome
+                  </th>
+                  <th className="px-3 py-2 font-medium text-foreground">
+                    CNPJ
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((entity) => (
+                  <tr
+                    key={entity.id ?? `${entity.name}-${entity.taxId}`}
+                    className="cursor-pointer border-t border-border hover:bg-hover"
+                    onClick={() => onSelect(entity)}
+                  >
+                    <td className="px-3 py-2 text-foreground">{entity.name}</td>
+                    <td className="px-3 py-2 text-foreground">
+                      {formatDocument(entity.taxId)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pageIndex === 0 || loading}
+            onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-caption">Página {pageIndex + 1}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={items.length < pageSize || loading}
+            onClick={() => setPageIndex((current) => current + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function CompanyDebtorSection({
   formData,
   errors,
@@ -155,6 +311,9 @@ export function CompanyDebtorSection({
   const [highlightedCityIndex, setHighlightedCityIndex] = useState(-1);
   const [ufQuery, setUfQuery] = useState(formData.companyUf);
   const [cityQuery, setCityQuery] = useState(formData.companyCity);
+  const [entityLookup, setEntityLookup] = useState<{
+    entityType: EntityType;
+  } | null>(null);
 
   const ufOptions = useMemo(() => {
     const sorted = [...stateOptions].sort((a, b) =>
@@ -190,6 +349,20 @@ export function CompanyDebtorSection({
   }, [cityOptions, cityQuery]);
 
   const canSelectCity = isValidStateCode(formData.companyUf);
+
+  function handleSelectEntity(entity: Entity) {
+    if (entityLookup?.entityType === 'ORGANIZATIONAL') {
+      updateField('companyLegalName', entity.name ?? '');
+      updateField('companyCnpj', formatCnpj(entity.taxId ?? ''));
+    }
+
+    if (entityLookup?.entityType === 'DEBTOR') {
+      updateField('debtorLegalName', entity.name ?? '');
+      updateField('debtorCnpj', formatCnpj(entity.taxId ?? ''));
+    }
+
+    setEntityLookup(null);
+  }
 
   function commitUfSelection(index: number) {
     const selected = filteredUfOptions[index];
@@ -286,253 +459,276 @@ export function CompanyDebtorSection({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FieldWrapper
-        label="Razao social GEQ"
-        required
-        error={errors.companyLegalName}
-      >
-        <Input
-          value={formData.companyLegalName}
-          onChange={(event) =>
-            updateField('companyLegalName', event.target.value)
-          }
-          status={errors.companyLegalName ? 'error' : 'default'}
-          placeholder="Ex.: GEQ Companhia de Gas"
+    <>
+      {entityLookup && (
+        <EntitySearchModal
+          open={Boolean(entityLookup)}
+          entityType={entityLookup.entityType}
+          onClose={() => setEntityLookup(null)}
+          onSelect={handleSelectEntity}
         />
-      </FieldWrapper>
+      )}
 
-      <FieldWrapper label="CNPJ GEQ" required error={errors.companyCnpj}>
-        <Input
-          value={formData.companyCnpj}
-          onChange={(event) =>
-            updateField('companyCnpj', formatCnpj(event.target.value))
-          }
-          status={errors.companyCnpj ? 'error' : 'default'}
-          placeholder="00.000.000/0000-00"
-        />
-      </FieldWrapper>
-
-      <FieldWrapper label="UF" required error={errors.companyUf}>
-        <div className="relative">
+      <div className="grid gap-4 md:grid-cols-2">
+        <FieldWrapper
+          label="Razao social GEQ"
+          required
+          error={errors.companyLegalName}
+        >
           <Input
-            value={ufQuery}
-            onFocus={() => {
-              setIsUfOpen(true);
-              setHighlightedUfIndex(-1);
-            }}
-            onBlur={() =>
-              setTimeout(() => {
-                setIsUfOpen(false);
+            value={formData.companyLegalName}
+            onFocus={() => setEntityLookup({ entityType: 'ORGANIZATIONAL' })}
+            onChange={(event) =>
+              updateField('companyLegalName', event.target.value)
+            }
+            status={errors.companyLegalName ? 'error' : 'default'}
+            placeholder="Ex.: GEQ Companhia de Gas"
+          />
+        </FieldWrapper>
+
+        <FieldWrapper label="CNPJ GEQ" required error={errors.companyCnpj}>
+          <Input
+            value={formData.companyCnpj}
+            onFocus={() => setEntityLookup({ entityType: 'ORGANIZATIONAL' })}
+            onChange={(event) =>
+              updateField('companyCnpj', formatCnpj(event.target.value))
+            }
+            status={errors.companyCnpj ? 'error' : 'default'}
+            placeholder="00.000.000/0000-00"
+          />
+        </FieldWrapper>
+
+        <FieldWrapper label="UF" required error={errors.companyUf}>
+          <div className="relative">
+            <Input
+              value={ufQuery}
+              onFocus={() => {
+                setIsUfOpen(true);
                 setHighlightedUfIndex(-1);
-              }, 120)
-            }
-            onKeyDown={onUfKeyDown}
-            onChange={(event) => {
-              const typed = event.target.value.toUpperCase();
-              setUfQuery(typed);
-              setHighlightedUfIndex(-1);
-              const maybeCode = resolveStateCodeFromInput(typed);
-              updateField(
-                'companyUf',
-                isValidStateCode(maybeCode) ? maybeCode : '',
-              );
-              updateField('companyCity', '');
-              setCityQuery('');
-            }}
-            status={errors.companyUf ? 'error' : 'default'}
-            placeholder="Digite UF ou nome do estado"
-          />
-          {isUfOpen && (
-            <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-              {filteredUfOptions.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhuma UF encontrada.
-                </p>
-              ) : (
-                filteredUfOptions.map((uf) => (
-                  <button
-                    key={uf.code}
-                    type="button"
-                    className={cn(
-                      'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
-                      highlightedUfIndex >= 0 &&
-                        filteredUfOptions[highlightedUfIndex]?.code ===
-                          uf.code &&
-                        'bg-hover',
-                    )}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() =>
-                      setHighlightedUfIndex(
-                        filteredUfOptions.findIndex(
+              }}
+              onBlur={() =>
+                setTimeout(() => {
+                  setIsUfOpen(false);
+                  setHighlightedUfIndex(-1);
+                }, 120)
+              }
+              onKeyDown={onUfKeyDown}
+              onChange={(event) => {
+                const typed = event.target.value.toUpperCase();
+                setUfQuery(typed);
+                setHighlightedUfIndex(-1);
+                const maybeCode = resolveStateCodeFromInput(typed);
+                updateField(
+                  'companyUf',
+                  isValidStateCode(maybeCode) ? maybeCode : '',
+                );
+                updateField('companyCity', '');
+                setCityQuery('');
+              }}
+              status={errors.companyUf ? 'error' : 'default'}
+              placeholder="Digite UF ou nome do estado"
+            />
+            {isUfOpen && (
+              <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                {filteredUfOptions.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhuma UF encontrada.
+                  </p>
+                ) : (
+                  filteredUfOptions.map((uf) => (
+                    <button
+                      key={uf.code}
+                      type="button"
+                      className={cn(
+                        'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
+                        highlightedUfIndex >= 0 &&
+                          filteredUfOptions[highlightedUfIndex]?.code ===
+                            uf.code &&
+                          'bg-hover',
+                      )}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() =>
+                        setHighlightedUfIndex(
+                          filteredUfOptions.findIndex(
+                            (item) => item.code === uf.code,
+                          ),
+                        )
+                      }
+                      onClick={() => {
+                        const index = filteredUfOptions.findIndex(
                           (item) => item.code === uf.code,
-                        ),
-                      )
-                    }
-                    onClick={() => {
-                      const index = filteredUfOptions.findIndex(
-                        (item) => item.code === uf.code,
-                      );
-                      commitUfSelection(index);
-                    }}
-                  >
-                    {uf.display}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      </FieldWrapper>
+                        );
+                        commitUfSelection(index);
+                      }}
+                    >
+                      {uf.display}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </FieldWrapper>
 
-      <FieldWrapper label="Cidade" required error={errors.companyCity}>
-        <div className="relative">
-          <Input
-            value={cityQuery}
-            onFocus={() => {
-              if (!canSelectCity) return;
-              setIsCityOpen(true);
-              setHighlightedCityIndex(-1);
-            }}
-            onBlur={() =>
-              setTimeout(() => {
-                setIsCityOpen(false);
+        <FieldWrapper label="Cidade" required error={errors.companyCity}>
+          <div className="relative">
+            <Input
+              value={cityQuery}
+              onFocus={() => {
+                if (!canSelectCity) return;
+                setIsCityOpen(true);
                 setHighlightedCityIndex(-1);
-              }, 120)
+              }}
+              onBlur={() =>
+                setTimeout(() => {
+                  setIsCityOpen(false);
+                  setHighlightedCityIndex(-1);
+                }, 120)
+              }
+              onKeyDown={onCityKeyDown}
+              onChange={(event) => {
+                setCityQuery(event.target.value);
+                setHighlightedCityIndex(-1);
+                updateField('companyCity', event.target.value);
+              }}
+              disabled={!canSelectCity}
+              status={errors.companyCity ? 'error' : 'default'}
+              placeholder={
+                canSelectCity
+                  ? 'Digite para filtrar cidade'
+                  : 'Selecione uma UF primeiro'
+              }
+            />
+            {canSelectCity && isCityOpen && (
+              <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                {filteredCityOptions.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhuma cidade encontrada.
+                  </p>
+                ) : (
+                  filteredCityOptions.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      className={cn(
+                        'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
+                        highlightedCityIndex >= 0 &&
+                          filteredCityOptions[highlightedCityIndex] === city &&
+                          'bg-hover',
+                      )}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() =>
+                        setHighlightedCityIndex(
+                          filteredCityOptions.findIndex(
+                            (item) => item === city,
+                          ),
+                        )
+                      }
+                      onClick={() => {
+                        const index = filteredCityOptions.findIndex(
+                          (item) => item === city,
+                        );
+                        commitCitySelection(index);
+                      }}
+                    >
+                      {city}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </FieldWrapper>
+
+        <FieldWrapper
+          label="Nome empresarial da devedora"
+          required
+          error={errors.debtorLegalName}
+        >
+          <Input
+            value={formData.debtorLegalName}
+            onFocus={() => setEntityLookup({ entityType: 'DEBTOR' })}
+            onChange={(event) =>
+              updateField('debtorLegalName', event.target.value)
             }
-            onKeyDown={onCityKeyDown}
-            onChange={(event) => {
-              setCityQuery(event.target.value);
-              setHighlightedCityIndex(-1);
-              updateField('companyCity', event.target.value);
-            }}
-            disabled={!canSelectCity}
-            status={errors.companyCity ? 'error' : 'default'}
-            placeholder={
-              canSelectCity
-                ? 'Digite para filtrar cidade'
-                : 'Selecione uma UF primeiro'
-            }
+            status={errors.debtorLegalName ? 'error' : 'default'}
           />
-          {canSelectCity && isCityOpen && (
-            <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-              {filteredCityOptions.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhuma cidade encontrada.
-                </p>
-              ) : (
-                filteredCityOptions.map((city) => (
-                  <button
-                    key={city}
-                    type="button"
-                    className={cn(
-                      'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
-                      highlightedCityIndex >= 0 &&
-                        filteredCityOptions[highlightedCityIndex] === city &&
-                        'bg-hover',
-                    )}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() =>
-                      setHighlightedCityIndex(
-                        filteredCityOptions.findIndex((item) => item === city),
-                      )
-                    }
-                    onClick={() => {
-                      const index = filteredCityOptions.findIndex(
-                        (item) => item === city,
-                      );
-                      commitCitySelection(index);
-                    }}
-                  >
-                    {city}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      </FieldWrapper>
+        </FieldWrapper>
 
-      <FieldWrapper
-        label="Nome empresarial da devedora"
-        required
-        error={errors.debtorLegalName}
-      >
-        <Input
-          value={formData.debtorLegalName}
-          onChange={(event) =>
-            updateField('debtorLegalName', event.target.value)
-          }
-          status={errors.debtorLegalName ? 'error' : 'default'}
-        />
-      </FieldWrapper>
+        <FieldWrapper
+          label="CNPJ da devedora"
+          required
+          error={errors.debtorCnpj}
+        >
+          <Input
+            value={formData.debtorCnpj}
+            onFocus={() => setEntityLookup({ entityType: 'DEBTOR' })}
+            onChange={(event) =>
+              updateField('debtorCnpj', formatCnpj(event.target.value))
+            }
+            status={errors.debtorCnpj ? 'error' : 'default'}
+            placeholder="00.000.000/0000-00"
+          />
+        </FieldWrapper>
 
-      <FieldWrapper label="CNPJ da devedora" required error={errors.debtorCnpj}>
-        <Input
-          value={formData.debtorCnpj}
-          onChange={(event) =>
-            updateField('debtorCnpj', formatCnpj(event.target.value))
-          }
-          status={errors.debtorCnpj ? 'error' : 'default'}
-          placeholder="00.000.000/0000-00"
-        />
-      </FieldWrapper>
+        <FieldWrapper
+          label="Endereco completo"
+          required
+          error={errors.debtorAddress}
+        >
+          <Input
+            value={formData.debtorAddress}
+            onChange={(event) =>
+              updateField('debtorAddress', event.target.value)
+            }
+            status={errors.debtorAddress ? 'error' : 'default'}
+          />
+        </FieldWrapper>
 
-      <FieldWrapper
-        label="Endereco completo"
-        required
-        error={errors.debtorAddress}
-      >
-        <Input
-          value={formData.debtorAddress}
-          onChange={(event) => updateField('debtorAddress', event.target.value)}
-          status={errors.debtorAddress ? 'error' : 'default'}
-        />
-      </FieldWrapper>
+        <FieldWrapper
+          label="Confirmado por"
+          required
+          error={errors.addressConfirmedBy}
+        >
+          <Input
+            value={formData.addressConfirmedBy}
+            onChange={(event) =>
+              updateField('addressConfirmedBy', event.target.value)
+            }
+            status={errors.addressConfirmedBy ? 'error' : 'default'}
+            placeholder="Ex.: Maria Souza"
+          />
+        </FieldWrapper>
 
-      <FieldWrapper
-        label="Confirmado por"
-        required
-        error={errors.addressConfirmedBy}
-      >
-        <Input
-          value={formData.addressConfirmedBy}
-          onChange={(event) =>
-            updateField('addressConfirmedBy', event.target.value)
-          }
-          status={errors.addressConfirmedBy ? 'error' : 'default'}
-          placeholder="Ex.: Maria Souza"
-        />
-      </FieldWrapper>
+        <FieldWrapper
+          label="Cargo"
+          required
+          error={errors.addressConfirmedByRole}
+        >
+          <Select
+            value={formData.addressConfirmedByRole}
+            onValueChange={(value) =>
+              updateField('addressConfirmedByRole', value)
+            }
+            placeholder="Selecione o cargo"
+            options={confirmationRoleOptions}
+            status={errors.addressConfirmedByRole ? 'error' : 'default'}
+          />
+        </FieldWrapper>
 
-      <FieldWrapper
-        label="Cargo"
-        required
-        error={errors.addressConfirmedByRole}
-      >
-        <Select
-          value={formData.addressConfirmedByRole}
-          onValueChange={(value) =>
-            updateField('addressConfirmedByRole', value)
-          }
-          placeholder="Selecione o cargo"
-          options={confirmationRoleOptions}
-          status={errors.addressConfirmedByRole ? 'error' : 'default'}
-        />
-      </FieldWrapper>
-
-      <FieldWrapper
-        label="Data da confirmação"
-        required
-        error={errors.addressConfirmedByDate}
-      >
-        <DatePicker
-          value={formData.addressConfirmedByDate}
-          onChange={(value) => updateField('addressConfirmedByDate', value)}
-          placeholder="Selecione a data"
-        />
-      </FieldWrapper>
-    </div>
+        <FieldWrapper
+          label="Data da confirmação"
+          required
+          error={errors.addressConfirmedByDate}
+        >
+          <DatePicker
+            value={formData.addressConfirmedByDate}
+            onChange={(value) => updateField('addressConfirmedByDate', value)}
+            placeholder="Selecione a data"
+          />
+        </FieldWrapper>
+      </div>
+    </>
   );
 }
 

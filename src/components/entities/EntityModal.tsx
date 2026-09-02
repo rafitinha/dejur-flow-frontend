@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { z } from 'zod';
 import { getCities, getStates } from '@brazilian-utils/brazilian-utils';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
+import { normalizeText } from '@/components/forms/checklist/wizard/helpers';
 import type {
   Entity,
   EntityStatus,
@@ -15,6 +17,7 @@ import type {
 } from '@/features/requests/api';
 import { lookupPostalCode } from '@/features/address/cep';
 import { isValidTaxId } from '@/lib/utils/cnpj';
+import { cn } from '@/lib/utils/cn';
 
 const taxIdTypeLabels: Record<EntityTaxIdType, string> = {
   CPF: 'CPF',
@@ -95,6 +98,10 @@ function formatPostalCode(value: string) {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
+function formatAddressNumber(value: string) {
+  return value.replace(/\D/g, '').slice(0, 10);
+}
+
 function normalizeValues(raw: Partial<Entity>): EntityFormValues {
   return {
     name: raw.name ?? '',
@@ -136,6 +143,35 @@ export function EntityModal({
   );
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false);
+  const [isUfOpen, setIsUfOpen] = useState(false);
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [ufQuery, setUfQuery] = useState(initialValues?.address?.state ?? '');
+  const [cityQuery, setCityQuery] = useState(
+    initialValues?.address?.city ?? '',
+  );
+  const [highlightedUfIndex, setHighlightedUfIndex] = useState(-1);
+  const [highlightedCityIndex, setHighlightedCityIndex] = useState(-1);
+
+  const ufOptions = useMemo(
+    () =>
+      brazilStates.map((state) => ({
+        code: state.code,
+        name: state.name,
+        display: `${state.code} - ${state.name}`,
+      })),
+    [],
+  );
+
+  const filteredUfOptions = useMemo(() => {
+    const query = normalizeText(ufQuery);
+    if (!query) return ufOptions;
+
+    return ufOptions.filter(
+      (option) =>
+        normalizeText(option.code).includes(query) ||
+        normalizeText(option.name).includes(query),
+    );
+  }, [ufOptions, ufQuery]);
 
   const cityOptions = useMemo(() => {
     const currentState = form.address.state as
@@ -148,10 +184,22 @@ export function EntityModal({
     return getCities(currentState).sort((a, b) => a.localeCompare(b));
   }, [form.address.state]);
 
-  useEffect(() => {
-    setForm(initialValues ? normalizeValues(initialValues) : emptyForm);
+  const filteredCityOptions = useMemo(() => {
+    const query = normalizeText(cityQuery);
+    if (!query) return cityOptions;
+
+    return cityOptions.filter((city) => normalizeText(city).includes(query));
+  }, [cityOptions, cityQuery]);
+
+  function resetFormState(nextInitialValues?: Partial<Entity>) {
+    const nextValues = nextInitialValues
+      ? normalizeValues(nextInitialValues)
+      : emptyForm;
+    setForm(nextValues);
     setErrors({});
-  }, [initialValues, open]);
+    setUfQuery(nextValues.address.state ?? '');
+    setCityQuery(nextValues.address.city ?? '');
+  }
 
   const taxIdOptions = useMemo(
     () =>
@@ -195,6 +243,100 @@ export function EntityModal({
         [key]: value,
       },
     }));
+  }
+
+  function commitUfSelection(index: number) {
+    const selected = filteredUfOptions[index];
+    if (!selected) return;
+
+    setAddressField('state', selected.code);
+    setAddressField('city', '');
+    setUfQuery(selected.code);
+    setCityQuery('');
+    setIsUfOpen(false);
+    setHighlightedUfIndex(-1);
+  }
+
+  function commitCitySelection(index: number) {
+    const selected = filteredCityOptions[index];
+    if (!selected) return;
+
+    setAddressField('city', selected);
+    setCityQuery(selected);
+    setIsCityOpen(false);
+    setHighlightedCityIndex(-1);
+  }
+
+  function onUfKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!isUfOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      setIsUfOpen(true);
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setHighlightedUfIndex((prev) =>
+        prev < filteredUfOptions.length - 1 ? prev + 1 : 0,
+      );
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setHighlightedUfIndex((prev) =>
+        prev > 0 ? prev - 1 : Math.max(filteredUfOptions.length - 1, 0),
+      );
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      if (highlightedUfIndex >= 0) {
+        event.preventDefault();
+        commitUfSelection(highlightedUfIndex);
+      }
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setIsUfOpen(false);
+      setHighlightedUfIndex(-1);
+    }
+  }
+
+  function onCityKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!isCityOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      setIsCityOpen(true);
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setHighlightedCityIndex((prev) =>
+        prev < filteredCityOptions.length - 1 ? prev + 1 : 0,
+      );
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setHighlightedCityIndex((prev) =>
+        prev > 0 ? prev - 1 : Math.max(filteredCityOptions.length - 1, 0),
+      );
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      if (highlightedCityIndex >= 0) {
+        event.preventDefault();
+        commitCitySelection(highlightedCityIndex);
+      }
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setIsCityOpen(false);
+      setHighlightedCityIndex(-1);
+    }
   }
 
   function validate() {
@@ -337,7 +479,12 @@ export function EntityModal({
     <Modal
       open={open}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next) {
+          onClose();
+          return;
+        }
+
+        resetFormState(initialValues);
       }}
       title={mode === 'create' ? 'Adicionar entidade' : 'Editar entidade'}
     >
@@ -527,19 +674,61 @@ export function EntityModal({
 
             <div className="space-y-1">
               <label className="text-caption text-muted-foreground">UF</label>
-              <Select
-                value={form.address.state}
-                onValueChange={(value) => {
-                  const normalizedState = value.toUpperCase().slice(0, 2);
-                  setAddressField('state', normalizedState);
-                  setAddressField('city', '');
-                }}
-                placeholder="Selecione a UF"
-                options={brazilStates.map((state) => ({
-                  value: state.code,
-                  label: `${state.code} - ${state.name}`,
-                }))}
-              />
+              <div className="relative">
+                <Input
+                  value={ufQuery}
+                  onFocus={() => {
+                    setIsUfOpen(true);
+                    setHighlightedUfIndex(-1);
+                  }}
+                  onBlur={() =>
+                    setTimeout(() => {
+                      setIsUfOpen(false);
+                      setHighlightedUfIndex(-1);
+                    }, 120)
+                  }
+                  onKeyDown={onUfKeyDown}
+                  onChange={(event) => {
+                    setUfQuery(event.target.value.toUpperCase());
+                    setHighlightedUfIndex(-1);
+                    if (!event.target.value.trim()) {
+                      setAddressField('state', '');
+                      setAddressField('city', '');
+                      setCityQuery('');
+                    }
+                  }}
+                  placeholder="Digite UF ou nome do estado"
+                  status={errors['address.state'] ? 'error' : 'default'}
+                />
+                {isUfOpen && (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                    {filteredUfOptions.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma UF encontrada.
+                      </p>
+                    ) : (
+                      filteredUfOptions.map((option, index) => (
+                        <button
+                          key={option.code}
+                          type="button"
+                          className={cn(
+                            'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
+                            highlightedUfIndex >= 0 &&
+                              filteredUfOptions[highlightedUfIndex]?.code ===
+                                option.code &&
+                              'bg-hover',
+                          )}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setHighlightedUfIndex(index)}
+                          onClick={() => commitUfSelection(index)}
+                        >
+                          {option.display}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               {errors['address.state'] && (
                 <p className="text-xs text-danger">{errors['address.state']}</p>
               )}
@@ -549,23 +738,64 @@ export function EntityModal({
               <label className="text-caption text-muted-foreground">
                 Cidade
               </label>
-              <Select
-                value={form.address.city}
-                onValueChange={(value) => setAddressField('city', value)}
-                placeholder={
-                  form.address.state
-                    ? 'Selecione a cidade'
-                    : 'Selecione a UF primeiro'
-                }
-                options={cityOptions.map((city) => ({
-                  value: city,
-                  label: city,
-                }))}
-                disabled={
-                  !form.address.state ||
-                  !brazilStateCodes.has(form.address.state.toUpperCase())
-                }
-              />
+              <div className="relative">
+                <Input
+                  value={cityQuery}
+                  onFocus={() => {
+                    if (!form.address.state) return;
+                    setIsCityOpen(true);
+                    setHighlightedCityIndex(-1);
+                  }}
+                  onBlur={() =>
+                    setTimeout(() => {
+                      setIsCityOpen(false);
+                      setHighlightedCityIndex(-1);
+                    }, 120)
+                  }
+                  onKeyDown={onCityKeyDown}
+                  onChange={(event) => {
+                    setCityQuery(event.target.value);
+                    setHighlightedCityIndex(-1);
+                    if (!form.address.state) return;
+                    setAddressField('city', event.target.value);
+                  }}
+                  disabled={!form.address.state}
+                  placeholder={
+                    form.address.state
+                      ? 'Digite para filtrar cidade'
+                      : 'Selecione uma UF primeiro'
+                  }
+                  status={errors['address.city'] ? 'error' : 'default'}
+                />
+                {form.address.state && isCityOpen && (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                    {filteredCityOptions.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma cidade encontrada.
+                      </p>
+                    ) : (
+                      filteredCityOptions.map((city, index) => (
+                        <button
+                          key={city}
+                          type="button"
+                          className={cn(
+                            'block w-full px-3 py-2 text-left text-sm hover:bg-hover',
+                            highlightedCityIndex >= 0 &&
+                              filteredCityOptions[highlightedCityIndex] ===
+                                city &&
+                              'bg-hover',
+                          )}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setHighlightedCityIndex(index)}
+                          onClick={() => commitCitySelection(index)}
+                        >
+                          {city}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               {errors['address.city'] && (
                 <p className="text-xs text-danger">{errors['address.city']}</p>
               )}

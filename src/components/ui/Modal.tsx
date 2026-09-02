@@ -21,7 +21,7 @@ export function Modal({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px]" />
         <Dialog.Content
           className={cn(
-            'fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl focus-visible:outline-none',
+            'fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-xl max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl focus-visible:outline-none',
           )}
         >
           <div className="mb-4 flex items-start justify-between gap-3">

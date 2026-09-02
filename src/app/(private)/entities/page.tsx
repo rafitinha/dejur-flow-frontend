@@ -470,9 +470,9 @@ export default function EntitiesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                     <tr
-                      key={item.id}
+                      key={item.id ?? item.taxId ?? `entity-row-${index}`}
                       className="border-b border-border/80 hover:bg-hover/60"
                     >
                       <td className="px-3 py-3">
@@ -557,6 +557,7 @@ export default function EntitiesPage() {
       </Card>
 
       <EntityModal
+        key={selectedEntity?.id ?? 'new-entity'}
         open={modalOpen}
         onClose={() => {
           setModalOpen(false);
