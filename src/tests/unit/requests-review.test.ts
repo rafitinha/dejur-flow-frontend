@@ -21,11 +21,16 @@ const baseRequest: JudicialRequestDetail = {
     cnpj: '11.111.111/0001-11',
     uf: 'RJ',
     city: 'Rio de Janeiro',
+    debtorAddress: 'Rua A, 123',
+    addressConfirmedBy: 'Ana',
+    addressConfirmedByRole: 'Analista',
+    addressConfirmedByDate: '2026-08-10',
   },
   financial: {
     amount: 125000,
     currency: 'BRL',
     dueDate: '2026-08-10',
+    index: 'IPCA',
   },
   agreementAttempts: [],
   factsSummary: 'Resumo de fatos\ncom quebras de linha.',
@@ -41,15 +46,13 @@ const baseRequest: JudicialRequestDetail = {
   ],
   clientValidation: { approvedByClient: true },
   history: [{ at: '2026-08-10T09:00:00.000Z', from: 'DRAFT', to: 'APPROVED' }],
-  data: {
+  checklistDetails: {
     checklistType: 'RECUPERACAO_VASILHAMES',
-    data: {
-      p13Quantity: 5,
-      p20Quantity: 2,
-      p45Quantity: 1,
-      historicalAmount: '1000',
-      updatedAmount: '1200',
-    },
+    p13Quantity: '5',
+    p20Quantity: '2',
+    p45Quantity: '1',
+    historicalAmount: '1000',
+    updatedAmount: '1200',
   },
 };
 
@@ -69,19 +72,20 @@ describe('clipboard formatting', () => {
     const request: JudicialRequestDetail = {
       ...baseRequest,
       checklistType: 'COBRANCA_MULTA_CONTRATUAL',
-      data: {
+      debtor: {
+        ...baseRequest.debtor,
+        addressConfirmedByRole: 'Diretor',
+        addressConfirmedByDate: '2026-08-15',
+      },
+      checklistDetails: {
         checklistType: 'COBRANCA_MULTA_CONTRATUAL',
-        data: {
-          contractType: 'Prestação de serviços',
-          breachedClause: 'Cláusula de inadimplência',
-          firstCycleFinished: true,
-          maxDiscount: '1500',
-          confirmationRole: 'Diretor',
-          confirmationDate: '2026-08-15',
-          value: '25000,00',
-          index: 'INPC',
-          updatedAt: '2026-08-15',
-        },
+        contractType: 'Prestação de serviços',
+        breachedClause: 'Cláusula de inadimplência',
+        firstCycleFinished: true,
+        maxDiscount: '1500',
+        value: '25000,00',
+        index: 'INPC',
+        updatedAt: '2026-08-15',
       },
     };
 

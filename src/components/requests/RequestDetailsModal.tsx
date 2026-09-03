@@ -180,7 +180,7 @@ export function RequestDetailsModal({
       title="Detalhes da solicitação"
       description="Revise os dados da solicitação e realize ações de exportação, download e cópia estruturada."
     >
-      <div className="max-h-[70vh] overflow-y-auto pr-1">
+      <div className="pr-1">
         {loading ? (
           <div className="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-border bg-muted/30 p-6 text-center">
             <Loader2 size={22} className="animate-spin text-primary" />

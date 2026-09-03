@@ -1252,29 +1252,17 @@
         "type": "object",
         "required": [
           "checklistType",
-          "createdBy",
           "company",
           "debtor",
           "financial",
+          "agreementAttempts",
           "factsSummary",
-          "documents"
+          "opinion",
+          "checklistDetails"
         ],
         "properties": {
           "checklistType": {
             "$ref": "#/components/schemas/ChecklistType"
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/CreatedBy"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date",
-            "example": "2026-06-30"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date",
-            "example": "2026-06-30"
           },
           "company": {
             "$ref": "#/components/schemas/RequestCompany"
@@ -1298,17 +1286,51 @@
           "opinion": {
             "$ref": "#/components/schemas/RequestOpinion"
           },
-          "documents": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RequestDocument"
-            }
-          },
-          "clientValidation": {
-            "$ref": "#/components/schemas/ClientValidation"
-          },
           "checklistDetails": {
             "$ref": "#/components/schemas/ChecklistDetails"
+          }
+        },
+        "example": {
+          "checklistType": "COBRANCA_TITULOS",
+          "company": {
+            "name": "Empresa Credora SA",
+            "cnpj": "24265750000153",
+            "uf": "SP",
+            "city": "Sao Paulo"
+          },
+          "debtor": {
+            "name": "Distribuidora Exemplo LTDA",
+            "cnpj": "17409361000199",
+            "uf": "RJ",
+            "city": "Rio de Janeiro",
+            "debtorAddress": "Rua Oliveira Rosas, Nº 1212",
+            "addressConfirmedBy": "Fulano de Cicrano",
+            "addressConfirmedByRole": "Analista Jurídico",
+            "addressConfirmedByDate": "2026-07-03"
+          },
+          "financial": {
+            "amount": 152340.55,
+            "currency": "BRL",
+            "dueDate": "2026-06-30",
+            "index": "IPCA"
+          },
+          "agreementAttempts": [
+            {
+              "date": "2026-06-15",
+              "channel": "email",
+              "result": "sem resposta"
+            }
+          ],
+          "factsSummary": "Inadimplencia superior a 90 dias com notificacoes enviadas.",
+          "opinion": {
+            "recommendedAction": "Ajuizamento"
+          },
+          "checklistDetails": {
+            "checklistType": "COBRANCA_TITULOS",
+            "titleType": "DUPLICATA",
+            "titleNumber": "123456",
+            "guarantor": "Fulano de Tal",
+            "otherGuarantees": "Aval"
           }
         }
       },

@@ -44,10 +44,15 @@ function formatCurrency(value?: number, currency?: string) {
   }).format(value);
 }
 
-function formatBytes(size?: number) {
-  if (size === undefined || size === null || Number.isNaN(size)) return '';
+function formatBytes(size?: number | string) {
+  if (size === undefined || size === null || size === '') return '';
+
+  const numericSize = typeof size === 'string' ? Number(size) : Number(size);
+
+  if (!Number.isFinite(numericSize)) return '';
+
   const units = ['B', 'KB', 'MB', 'GB'];
-  let value = size;
+  let value = numericSize;
   let unitIndex = 0;
   while (value >= 1024 && unitIndex < units.length - 1) {
     value /= 1024;
@@ -94,95 +99,171 @@ function addSection(
   });
 }
 
+function normalizeChecklistDetails(request: JudicialRequestDetail) {
+  if (
+    !request.checklistDetails ||
+    typeof request.checklistDetails !== 'object'
+  ) {
+    return undefined;
+  }
+
+  const details = request.checklistDetails as Record<string, unknown>;
+
+  if ('checklistType' in details && details.checklistType) {
+    return request.checklistDetails;
+  }
+
+  if (request.checklistType) {
+    return {
+      ...request.checklistDetails,
+      checklistType: request.checklistType,
+    };
+  }
+
+  return undefined;
+}
+
+function getChecklistDetailsForType(
+  request: JudicialRequestDetail,
+  checklistType: JudicialRequestDetail['checklistType'],
+) {
+  const canonical = request.checklistDetails;
+  if (canonical && canonical.checklistType === checklistType) {
+    return canonical as Record<string, unknown> & {
+      checklistType: typeof checklistType;
+    };
+  }
+
+  return undefined;
+}
+
 function getSpecificDataSections(
   request: JudicialRequestDetail,
 ): ReviewTextSection[] {
   const sections: ReviewTextSection[] = [];
 
-  if (!request.data) return sections;
+  const checklistDetails = normalizeChecklistDetails(request);
 
-  if (
-    request.checklistType === 'RECUPERACAO_VASILHAMES' &&
-    request.data.checklistType === 'RECUPERACAO_VASILHAMES'
-  ) {
-    const data = request.data.data as {
-      p13Quantity?: number;
-      p20Quantity?: number;
-      p45Quantity?: number;
-      historicalAmount?: string;
-      updatedAmount?: string;
-      reason?: string;
-    };
+  const vasilhamesData = getChecklistDetailsForType(
+    request,
+    'RECUPERACAO_VASILHAMES',
+  ) as
+    | ({
+        checklistType: 'RECUPERACAO_VASILHAMES';
+        p13Quantity?: string | number;
+        p20Quantity?: string | number;
+        p45Quantity?: string | number;
+        historicalAmount?: string;
+        updatedAmount?: string;
+        refusalReason?: string;
+      } & Record<string, unknown>)
+    | undefined;
+
+  if (vasilhamesData) {
     addSection(
       sections,
       'DADOS ESPECÍFICOS',
       [
-        { label: 'Quantidade P13', value: renderValue(data.p13Quantity) },
-        { label: 'Quantidade P20', value: renderValue(data.p20Quantity) },
-        { label: 'Quantidade P45', value: renderValue(data.p45Quantity) },
-        { label: 'Valor histórico', value: renderValue(data.historicalAmount) },
-        { label: 'Valor atualizado', value: renderValue(data.updatedAmount) },
+        {
+          label: 'Quantidade P13',
+          value: renderValue(vasilhamesData.p13Quantity),
+        },
+        {
+          label: 'Quantidade P20',
+          value: renderValue(vasilhamesData.p20Quantity),
+        },
+        {
+          label: 'Quantidade P45',
+          value: renderValue(vasilhamesData.p45Quantity),
+        },
+        {
+          label: 'Valor histórico',
+          value: renderValue(vasilhamesData.historicalAmount),
+        },
+        {
+          label: 'Valor atualizado',
+          value: renderValue(vasilhamesData.updatedAmount),
+        },
       ],
-      data.reason ? [data.reason] : undefined,
+      vasilhamesData.refusalReason ? [vasilhamesData.refusalReason] : undefined,
     );
   }
 
-  if (
-    request.checklistType === 'COBRANCA_TITULOS' &&
-    request.data.checklistType === 'COBRANCA_TITULOS'
-  ) {
-    const data = request.data.data as {
-      titleType?: string;
-      titleNumber?: string;
-      guarantor?: string;
-      otherGuarantees?: string;
-      confirmationRole?: string;
-      confirmationDate?: string;
-    };
+  const titulosData = getChecklistDetailsForType(
+    request,
+    'COBRANCA_TITULOS',
+  ) as
+    | ({
+        checklistType: 'COBRANCA_TITULOS';
+        titleType?: string;
+        titleNumber?: string;
+        guarantor?: string;
+        otherGuarantees?: string;
+      } & Record<string, unknown>)
+    | undefined;
+
+  if (titulosData) {
     addSection(sections, 'DADOS ESPECÍFICOS', [
-      { label: 'Tipo do título', value: renderValue(data.titleType) },
-      { label: 'Número do título', value: renderValue(data.titleNumber) },
-      { label: 'Garantidor', value: renderValue(data.guarantor) },
-      { label: 'Outras garantias', value: renderValue(data.otherGuarantees) },
-      { label: 'Cargo', value: renderValue(data.confirmationRole) },
+      { label: 'Tipo do título', value: renderValue(titulosData.titleType) },
+      {
+        label: 'Número do título',
+        value: renderValue(titulosData.titleNumber),
+      },
+      { label: 'Garantidor', value: renderValue(titulosData.guarantor) },
+      {
+        label: 'Outras garantias',
+        value: renderValue(titulosData.otherGuarantees),
+      },
+      {
+        label: 'Cargo',
+        value: renderValue(request.debtor?.addressConfirmedByRole),
+      },
       {
         label: 'Data da confirmação',
-        value: renderValue(data.confirmationDate),
+        value: renderValue(request.debtor?.addressConfirmedByDate),
       },
     ]);
   }
 
-  if (
-    request.checklistType === 'COBRANCA_MULTA_CONTRATUAL' &&
-    request.data.checklistType === 'COBRANCA_MULTA_CONTRATUAL'
-  ) {
-    const data = request.data.data as {
-      contractType?: string;
-      breachedClause?: string;
-      firstCycleFinished?: boolean | string;
-      maxDiscount?: string;
-      confirmationRole?: string;
-      confirmationDate?: string;
-      value?: string;
-      index?: string;
-      updatedAt?: string;
-    };
+  const multaData = getChecklistDetailsForType(
+    request,
+    'COBRANCA_MULTA_CONTRATUAL',
+  ) as
+    | ({
+        checklistType: 'COBRANCA_MULTA_CONTRATUAL';
+        contractType?: string;
+        breachedClause?: string;
+        firstCycleFinished?: boolean | string;
+        maxDiscount?: string;
+        value?: string;
+        index?: string;
+        updatedAt?: string;
+      } & Record<string, unknown>)
+    | undefined;
+
+  if (multaData) {
     addSection(sections, 'DADOS ESPECÍFICOS', [
-      { label: 'Tipo do contrato', value: renderValue(data.contractType) },
-      { label: 'Cláusula violada', value: renderValue(data.breachedClause) },
+      { label: 'Tipo do contrato', value: renderValue(multaData.contractType) },
+      {
+        label: 'Cláusula violada',
+        value: renderValue(multaData.breachedClause),
+      },
       {
         label: 'Primeiro ciclo finalizado',
-        value: renderValue(data.firstCycleFinished),
+        value: renderValue(multaData.firstCycleFinished),
       },
-      { label: 'Desconto máximo', value: renderValue(data.maxDiscount) },
-      { label: 'Cargo', value: renderValue(data.confirmationRole) },
+      { label: 'Desconto máximo', value: renderValue(multaData.maxDiscount) },
+      {
+        label: 'Cargo',
+        value: renderValue(request.debtor?.addressConfirmedByRole),
+      },
       {
         label: 'Data da confirmação',
-        value: renderValue(data.confirmationDate),
+        value: renderValue(request.debtor?.addressConfirmedByDate),
       },
-      { label: 'Valor', value: renderValue(data.value) },
-      { label: 'Índice', value: renderValue(data.index) },
-      { label: 'Data de atualização', value: renderValue(data.updatedAt) },
+      { label: 'Valor', value: renderValue(multaData.value) },
+      { label: 'Índice', value: renderValue(multaData.index) },
+      { label: 'Data de atualização', value: renderValue(multaData.updatedAt) },
     ]);
   }
 
@@ -217,15 +298,11 @@ export function buildRequestReviewSections(request: JudicialRequestDetail) {
     { label: 'Cidade', value: request.debtor?.city || '' },
     {
       label: 'Cargo',
-      value:
-        (request.data?.data as { confirmationRole?: string })
-          ?.confirmationRole || '',
+      value: request.debtor?.addressConfirmedByRole || '',
     },
     {
       label: 'Data da confirmação',
-      value:
-        (request.data?.data as { confirmationDate?: string })
-          ?.confirmationDate || '',
+      value: request.debtor?.addressConfirmedByDate || '',
     },
   ]);
 

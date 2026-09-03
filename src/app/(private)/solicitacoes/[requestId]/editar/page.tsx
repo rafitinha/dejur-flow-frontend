@@ -12,7 +12,12 @@ import {
 import { buttonVariants } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useToast } from '@/components/ui/Toast';
 import { getRequestById, updateRequest } from '@/features/requests/api';
+import {
+  mapRequestDetailToWizardForm,
+  mapWizardFormToUpdateRequestPayload,
+} from '@/features/requests/mappers';
 import {
   RequestStatus,
   JudicialRequestDetail,
@@ -47,14 +52,18 @@ const formatCurrency = (
   }).format(numericValue);
 };
 
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes';
+const formatFileSize = (bytes: number | string) => {
+  const normalizedBytes = typeof bytes === 'string' ? Number(bytes) : bytes;
+
+  if (!Number.isFinite(normalizedBytes) || normalizedBytes <= 0) {
+    return '0 Bytes';
+  }
 
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const i = Math.floor(Math.log(normalizedBytes) / Math.log(k));
 
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  return `${parseFloat((normalizedBytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
 const isEditableStatus = (status: RequestStatus) => {
@@ -98,93 +107,6 @@ function extractWizardFormData(
   return { ...result, ...wizard } as Partial<WizardFormData>;
 }
 
-export function mapRequestDetailToWizardForm(
-  detail: JudicialRequestDetail,
-): Partial<WizardFormData> {
-  const checklistDetails = detail.checklistDetails;
-  checklistDetails.checklistType = detail.checklistType;
-
-  let checklistData: Partial<WizardFormData> = {};
-
-  switch (checklistDetails.checklistType) {
-    case 'RECUPERACAO_VASILHAMES':
-      checklistData = {
-        rvP13: checklistDetails.p13Quantity,
-        rvP20: checklistDetails.p20Quantity,
-        rvP45: checklistDetails.p45Quantity,
-        rvHistoricalAmount: checklistDetails.historicalAmount,
-        rvUpdatedAmount: checklistDetails.updatedAmount,
-        rvRefusalReason: checklistDetails.refusalReason,
-      };
-      break;
-
-    case 'COBRANCA_TITULOS':
-      checklistData = {
-        ctTitleType: checklistDetails.titleType,
-        ctTitleNumber: checklistDetails.titleNumber,
-        ctGuarantor: checklistDetails.guarantor,
-        ctOtherGuarantees: checklistDetails.otherGuarantees,
-      };
-      break;
-
-    case 'COBRANCA_MULTA_CONTRATUAL':
-      checklistData = {
-        mcContractType: checklistDetails.contractType,
-        mcBreachedClause: checklistDetails.breachedClause,
-        mcFirstCycleFinished: checklistDetails.firstCycleFinished,
-        mcMaxDiscount: checklistDetails.maxDiscount,
-      };
-      break;
-  }
-
-  return {
-    // Empresa
-    companyLegalName: detail.company.name,
-    companyCnpj: formatDocument(detail.company.cnpj),
-    companyUf: detail.company.uf,
-    companyCity: detail.company.city,
-
-    // Devedor
-    debtorLegalName: detail.debtor.name,
-    debtorCnpj: formatDocument(detail.debtor.cnpj),
-
-    debtorAddress: detail.debtor.debtorAddress,
-    addressConfirmedBy: detail.debtor.addressConfirmedBy,
-    addressConfirmedByRole: detail.debtor.addressConfirmedByRole,
-    addressConfirmedByDate: detail.debtor.addressConfirmedByDate,
-
-    // Dados específicos do checklist
-    ...checklistData,
-
-    // Tentativas de acordo
-    agreementDetails: detail.agreementAttempts
-      .map(
-        (attempt) => `${attempt.date} - ${attempt.channel}: ${attempt.result}`,
-      )
-      .join('\n'),
-
-    // Financeiro
-    financialDetails: [
-      `Valor: ${detail.financial.amount} ${detail.financial.currency}`,
-      `Vencimento: ${detail.financial.dueDate}`,
-    ].join('\n'),
-
-    financialValue: formatCurrency(detail.financial.amount.toString(), false),
-    financialIndex: detail.financial.index,
-    financialUpdatedDate: detail.financial.dueDate,
-
-    // Fatos
-    factsSummary: [
-      detail.factsSummary,
-      ...(detail.llmResult?.recommendations ?? []),
-    ].join('\n'),
-
-    // Parecer
-    opinionDetails:
-      detail.llmResult?.summary ?? detail.opinion.recommendedAction,
-  };
-}
-
 export default function RequestEditPage({
   params,
 }: {
@@ -196,6 +118,7 @@ export default function RequestEditPage({
   const [error, setError] = useState<string | null>(null);
   const [reloadAttempt, setReloadAttempt] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -345,19 +268,46 @@ export default function RequestEditPage({
           setIsEditing(false);
           setReloadAttempt((current) => current + 1);
         }}
-        onSubmit={async ({ checklistType, formData, existingDocuments }) => {
-          const payload = {
-            requestId,
-            checklistType,
-            ...formData,
-            existingDocuments,
-          };
+        onSubmit={async ({
+          checklistType,
+          requestPayload,
+          formData,
+          existingDocuments,
+        }) => {
+          try {
+            const payload = {
+              ...(requestPayload ??
+                mapWizardFormToUpdateRequestPayload(formData, checklistType)),
+              requestId,
+              existingDocuments,
+            };
 
-          const fd = new FormData();
-          fd.append('metadata', JSON.stringify(payload));
+            const fd = new FormData();
+            fd.append('metadata', JSON.stringify(payload));
 
-          await updateRequest(requestId, fd);
-          return { requestId, userId: detail?.createdBy?.email };
+            await updateRequest(requestId, fd);
+
+            showToast({
+              title: 'Solicitação atualizada com sucesso.',
+              description: 'As alterações foram salvas corretamente.',
+              variant: 'success',
+            });
+
+            return { requestId, userId: detail?.createdBy?.email };
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : 'Não foi possível salvar as alterações.';
+
+            showToast({
+              title: 'Falha ao salvar solicitação.',
+              description: message,
+              variant: 'error',
+            });
+
+            throw error;
+          }
         }}
       />
     );

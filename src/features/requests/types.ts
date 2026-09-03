@@ -38,17 +38,17 @@ export type RequestDebtor = {
   cnpj: string;
   uf: string;
   city: string;
-  debtorAddress: string;
-  addressConfirmedBy: string;
-  addressConfirmedByRole: string;
-  addressConfirmedByDate: string;
+  debtorAddress?: string;
+  addressConfirmedBy?: string;
+  addressConfirmedByRole?: string;
+  addressConfirmedByDate?: string;
 };
 
 export type RequestFinancial = {
   amount: number;
   currency: string;
   dueDate: string;
-  index: string;
+  index?: string;
 };
 
 export type AgreementAttempt = {
@@ -62,6 +62,19 @@ export type RequestOpinion = {
   details?: string;
 };
 
+export type CreateRequestPayload = {
+  checklistType: ChecklistType;
+  company: RequestCompany;
+  debtor: RequestDebtor;
+  financial: RequestFinancial;
+  agreementAttempts: AgreementAttempt[];
+  factsSummary: string;
+  opinion: RequestOpinion;
+  checklistDetails: ChecklistDetails;
+};
+
+export type UpdateRequestPayload = CreateRequestPayload;
+
 export type RequestDocument = {
   documentId?: string;
   name?: string;
@@ -70,46 +83,6 @@ export type RequestDocument = {
   uploadedAt?: string;
   downloadUrl?: string;
 };
-
-export type RequestSpecificData =
-  | {
-      checklistType: 'RECUPERACAO_VASILHAMES';
-      data: {
-        p13Quantity?: number;
-        p20Quantity?: number;
-        p45Quantity?: number;
-        historicalAmount?: string;
-        updatedAmount?: string;
-        reason?: string;
-        confirmationRole?: string;
-        confirmationDate?: string;
-      };
-    }
-  | {
-      checklistType: 'COBRANCA_TITULOS';
-      data: {
-        titleType?: string;
-        titleNumber?: string;
-        guarantor?: string;
-        otherGuarantees?: string;
-        confirmationRole?: string;
-        confirmationDate?: string;
-      };
-    }
-  | {
-      checklistType: 'COBRANCA_MULTA_CONTRATUAL';
-      data: {
-        contractType?: string;
-        breachedClause?: string;
-        firstCycleFinished?: boolean | string;
-        maxDiscount?: string;
-        confirmationRole?: string;
-        confirmationDate?: string;
-        value?: string;
-        index?: string;
-        updatedAt?: string;
-      };
-    };
 
 export type ChecklistDetails =
   | {
@@ -173,10 +146,6 @@ export type JudicialRequestDetail = {
     to: string;
   }>;
 
-  /**
-   * Request-specific data
-   */
-  //data: RequestSpecificData;
   checklistDetails: ChecklistDetails;
 
   llmResult?: {

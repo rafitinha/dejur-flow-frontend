@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Wizard } from '@/components/ui/Wizard';
-import { ChecklistType } from '@/features/requests/types';
+import { ChecklistType, CreateRequestPayload } from '@/features/requests/types';
+import { mapWizardFormToCreateRequestPayload } from '@/features/requests/mappers';
 import {
   deleteRequestDocuments,
   uploadRequestDocuments,
@@ -56,6 +57,7 @@ export type ChecklistWizardSubmitParams = {
   requestId?: string;
   checklistType: ChecklistType;
   formData: WizardFormData;
+  requestPayload?: CreateRequestPayload;
   newFiles: File[];
   existingDocuments: ExistingDocument[];
 };
@@ -76,15 +78,6 @@ export type ChecklistWizardProps = {
     | ChecklistWizardSubmitResult
     | void;
 };
-
-function defaultSubmit(params: ChecklistWizardSubmitParams) {
-  if (params.mode === 'edit') {
-    alert(`Mock: solicitação ${params.requestId} atualizada`);
-    return;
-  }
-
-  alert('Mock: solicitação submetida como PROCESSING');
-}
 
 function normalizeDocumentSize(size?: number | string) {
   if (size === undefined || size === null || size === '') return 0;
@@ -135,7 +128,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     userId,
     onCancel,
     onCompleted,
-    onSubmit = defaultSubmit,
+    onSubmit,
   } = props;
 
   if (mode === 'edit') {
@@ -346,11 +339,23 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
       .map(toExistingDocument);
 
     try {
+      if (!onSubmit) {
+        throw new Error(
+          'ChecklistWizard: onSubmit obrigatório para salvar a solicitação.',
+        );
+      }
+
+      const requestPayload = mapWizardFormToCreateRequestPayload(
+        formData,
+        selectedChecklistType,
+      );
+
       const submitResult = await onSubmit({
         mode,
         requestId,
         checklistType: selectedChecklistType,
         formData,
+        requestPayload,
         newFiles,
         existingDocuments: retainedDocuments,
       });
