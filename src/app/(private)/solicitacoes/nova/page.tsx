@@ -72,7 +72,7 @@ export default function NewRequestPage() {
         throw error;
       }
     },
-    [router, showToast, token],
+    [showToast, token],
   );
 
   return <ChecklistWizard mode="create" onSubmit={handleSubmit} />;

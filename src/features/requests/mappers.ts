@@ -98,13 +98,7 @@ export function parseAgreementAttempts(
 
   if (parsedAttempts.length > 0) return parsedAttempts;
 
-  return [
-    {
-      date: '',
-      channel: text.trim(),
-      result: '',
-    },
-  ].filter((attempt) => attempt.channel || attempt.result || attempt.date);
+  return [];
 }
 
 export function mapWizardFormToChecklistDetails(

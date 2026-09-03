@@ -14,6 +14,7 @@ export type ExistingDocument = {
   size?: number | string;
   uploadedAt?: string;
   downloadUrl?: string;
+  status?: string;
 };
 
 export type UploadItem = {

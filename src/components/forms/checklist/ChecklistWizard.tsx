@@ -115,6 +115,7 @@ function toExistingDocument(item: UploadItem): ExistingDocument {
     size: normalizeDocumentSize(item.size),
     uploadedAt: item.uploadedAt,
     downloadUrl: item.downloadUrl,
+    status: item.status,
   };
 }
 
@@ -338,6 +339,13 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
       .filter((item) => item.status === 'existing')
       .map(toExistingDocument);
 
+    const documents = uploadItems
+      .filter(
+        (item) =>
+          item.status === 'existing' || item.status === 'pending_delete',
+      )
+      .map(toExistingDocument);
+
     try {
       if (!onSubmit) {
         throw new Error(
@@ -357,7 +365,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
         formData,
         requestPayload,
         newFiles,
-        existingDocuments: retainedDocuments,
+        existingDocuments: documents,
       });
 
       const resolvedRequestId = requestId ?? submitResult?.requestId;
@@ -381,6 +389,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
           );
         }
 
+        /*REVIEW: Implementar no BackEnd
         if (pendingDeletes.length > 0) {
           const documents = pendingDeletes.flatMap((item) =>
             item.documentId ? [{ documentId: item.documentId }] : [],
@@ -436,6 +445,9 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
           }
         }
 
+        */
+
+        /* REVIEW: Implementar no BackEnd
         if (pendingUploads.length > 0) {
           const uploadingIds = new Set(pendingUploads.map((item) => item.id));
           setUploadItems((currentItems) =>
@@ -473,7 +485,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
             );
             throw uploadError;
           }
-        }
+        }*/
       }
 
       setSubmitSuccess(
@@ -515,6 +527,23 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     [validateStep],
   );
 
+  function clearWizard() {
+    if (mode !== 'create') return;
+
+    setSelectedChecklistType(undefined);
+    setActiveStep(0);
+    setFormData({ ...initialWizardForm, ...(initialFormData ?? {}) });
+    setUploadItems([]);
+    setFieldErrors({});
+    setInvalidStepIndexes([]);
+    setStepHelpMessage('');
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('draft-checklist');
+    }
+  }
+
   function resetWizardByType(nextType: ChecklistType) {
     setSelectedChecklistType(nextType);
     setActiveStep(0);
@@ -525,6 +554,9 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
     setStepHelpMessage('');
     setSubmitError(null);
     setSubmitSuccess(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('draft-checklist');
+    }
   }
 
   useEffect(() => {
@@ -552,6 +584,7 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
   ]);
 
   const isEditMode = mode === 'edit';
+  const isCreateMode = mode === 'create';
 
   return (
     <section className="surface-elevated space-y-6 p-6 md:p-8">
@@ -798,14 +831,27 @@ export function ChecklistWizard(props: ChecklistWizardProps) {
         </p>
       )}
 
-      <div className="flex justify-between">
-        <Button
-          disabled={activeStep === 0 || isSubmitting}
-          variant="outline"
-          onClick={() => setActiveStep((previous) => Math.max(0, previous - 1))}
-        >
-          Voltar
-        </Button>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            disabled={activeStep === 0 || isSubmitting}
+            variant="outline"
+            onClick={() =>
+              setActiveStep((previous) => Math.max(0, previous - 1))
+            }
+          >
+            Voltar
+          </Button>
+
+          {activeStep === wizardSteps.length - 1 &&
+            isCreateMode &&
+            !isSubmitting && (
+              <Button variant="ghost" onClick={clearWizard}>
+                Cancelar
+              </Button>
+            )}
+        </div>
+
         <Button disabled={isSubmitting} onClick={onNext}>
           {activeStep === wizardSteps.length - 1
             ? isEditMode

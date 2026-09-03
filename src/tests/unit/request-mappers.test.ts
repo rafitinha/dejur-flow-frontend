@@ -4,6 +4,7 @@ import { initialWizardForm } from '@/components/forms/checklist/wizard/types';
 import {
   mapRequestDetailToWizardForm,
   mapWizardFormToCreateRequestPayload,
+  parseAgreementAttempts,
 } from '@/features/requests/mappers';
 import type { JudicialRequestDetail } from '@/features/requests/types';
 
@@ -80,6 +81,12 @@ describe('request payload mappers', () => {
     expect(requestPayload.opinion).toMatchObject({
       recommendedAction: 'Ajuizamento',
     });
+  });
+
+  it('ignores free-form agreement text that cannot be mapped into a structured attempt', () => {
+    expect(
+      parseAgreementAttempts('sfswfwefew we fwefwe ewfew wefw efwe'),
+    ).toEqual([]);
   });
 
   it.each([
