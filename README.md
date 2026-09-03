@@ -140,6 +140,51 @@ npm run validate:schemas
 - OpenAPI: `docs/openapi/openapi.json`
 - Postman: `docs/postman/Validador_Acoes_Judiciais.postman_collection.json`
 
+## Regras de negócio / features
+
+### Cadastro de Entidades
+
+No cadastro de entidades, o sistema utiliza serviços externos públicos para enriquecer os dados da empresa a partir do CNPJ e acelerar o preenchimento inicial do formulário. A ordem de consulta é:
+
+1. BrasilAPI
+2. ReceitaWS
+3. CNPJ.ws
+
+Esses serviços são usados para preencher campos como razão social, nome fantasia, situação cadastral, endereço, bairro, cidade, UF e CEP. O objetivo é reduzir o esforço manual do usuário, mas a consulta não é considerada fonte única de verdade.
+
+### APIs externas utilizadas
+
+As APIs públicas acima são consumidas no fluxo de entidade para compor automaticamente o cadastro. Elas podem não trazer todos os dados completos ou totalmente atualizados no momento da consulta, dependendo da disponibilidade do provedor, do estado cadastral da empresa e da qualidade dos dados públicos disponíveis.
+
+Além da busca por CNPJ, o sistema também utiliza uma API pública para consulta de CEP no cadastro de endereço. A origem principal utilizada é o ViaCEP, com fallback para o BrasilAPI quando necessário.
+
+Exemplos de consultas públicas:
+
+```txt
+BrasilAPI - CNPJ
+https://brasilapi.com.br/api/cnpj/v1/12345678000199
+
+ReceitaWS - CNPJ
+https://receitaws.com.br/v1/cnpj/12345678000199
+
+CNPJ.ws - CNPJ
+https://publica.cnpj.ws/cnpj/12345678000199
+
+ViaCEP - CEP
+https://viacep.com.br/ws/01001000/json/
+```
+
+Em cenários de resposta incompleta, indisponível, parcial ou inconsistente, o usuário pode continuar preenchendo os dados manualmente. O sistema também preserva as informações já digitadas pelo usuário quando a consulta pública não retorna dados suficientes ou válidos.
+
+### Observações importantes sobre APIs públicas
+
+- São serviços externos e públicos, portanto podem sofrer indisponibilidade, latência ou limitação de acesso.
+- Nem sempre retornam todos os campos completos ou atualizados no momento da consulta.
+- Dados cadastrais públicos podem diferir do registro oficial ou estar desatualizados.
+- O preenchimento automático é um facilitador, e não substitui a revisão humana e a validação final do backend.
+- O cadastro manual permanece como fallback obrigatório quando a resposta externa não for confiável ou suficiente.
+- Como são fontes externas, podem gerar interrupções momentâneas ou indisponibilidade do serviço em qualquer instante.
+
 ## Regras de upload
 
 - Extensões permitidas: `.pdf`, `.doc`, `.docx`, `.png`, `.jpg`, `.jpeg`
